@@ -561,7 +561,7 @@ def _minify_css(css: str) -> str:
 
 def minify_html(html: str) -> str:
     """
-    压缩 HTML+CSS，与 lanhu-html-converter-mcp 的 html-minifier-terser 行为对齐，
+    压缩 HTML+CSS
     用于减少返回体体积和 token 消耗。
     """
     try:
