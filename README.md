@@ -20,9 +20,6 @@
 
 [快速开始](#-快速开始) • [功能特性](#-核心特性) • [使用文档](#-使用指南) • [贡献指南](CONTRIBUTING.md)
 
-**扫码加入微信群交流**
-
-<p align="center"><img src="images/wechat.jpg" alt="微信群二维码" width="200" /></p>
 
 </div>
 
