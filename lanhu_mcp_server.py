@@ -806,6 +806,17 @@ def _oc_to_css(oc_code: str) -> str:
     return ';'.join(css)
 
 
+def _get_sketch_design_scale(sketch_data: dict) -> float:
+    """从 Sketch/Figma 元数据中获取设计坐标缩放比。"""
+    meta = sketch_data.get('meta') or {}
+    device = str(sketch_data.get('device') or meta.get('device') or '').lower()
+    for scale in (3, 2, 1):
+        if f'@{scale}x' in device:
+            return float(scale)
+    # Figma artboard 的 frame 已经是逻辑坐标；旧 board 数据默认按 @2x 导出。
+    return 1.0 if 'artboard' in sketch_data else 2.0
+
+
 def convert_sketch_to_html(sketch_data: dict, design_scale: float = 2.0,
                            design_img_url: str = "") -> str:
     """
@@ -929,7 +940,7 @@ def convert_sketch_to_html(sketch_data: dict, design_scale: float = 2.0,
                     _flatten(child)
                 return
             ltype = layer.get('type', '')
-            if ltype in ('layerSection', 'symbolInstence', 'artboard'):
+            if ltype in ('groupLayer', 'layerSection', 'symbolInstence', 'symbolInstance', 'artboard'):
                 # 检查是否有切图资源
                 images = layer.get('images') or {}
                 if images.get('png_xxxhd') or images.get('svg'):
@@ -961,7 +972,7 @@ def convert_sketch_to_html(sketch_data: dict, design_scale: float = 2.0,
                     _flatten(child)
                 return
             ltype = layer.get('type', '')
-            if ltype == 'layerSection':
+            if ltype in ('groupLayer', 'layerSection', 'symbolInstence', 'symbolInstance', 'artboard'):
                 images = layer.get('images') or {}
                 if images.get('png_xxxhd') or images.get('svg'):
                     layers.append(layer)
@@ -5957,12 +5968,7 @@ async def lanhu_get_ai_analyze_design_result(
                             hr['design_tokens'] = design_tokens
                             break
                 elif not html_succeeded:
-                    device_str = sketch_json.get('device', '')
-                    _design_scale = 2.0
-                    if '@3x' in device_str:
-                        _design_scale = 3.0
-                    elif '@1x' in device_str:
-                        _design_scale = 1.0
+                    _design_scale = _get_sketch_design_scale(sketch_json)
 
                     _design_img_url = design['url'].split('?')[0]
                     fallback_html, fallback_img_mapping, fallback_layer_annots = convert_sketch_to_html(
