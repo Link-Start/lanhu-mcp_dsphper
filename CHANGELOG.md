@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `easy-install.bat` supports an explicit noninteractive audit mode without changing the normal user prompts.
+- Windows Python version detection no longer uses `>` inside nested `cmd.exe` parsing, which previously misclassified Python 3.13 as unsupported.
 - Windows installer failures no longer wait for interactive `pause` input in automation.
 
 See [v1.8.3 release notes](RELEASE_NOTES_v1.8.3.md) for the Windows validation contract.

@@ -161,6 +161,9 @@ def test_installers_install_the_package_and_default_to_domestic_mirrors():
         assert "https://pypi.org/simple" in content
         assert "https://cdn.npmmirror.com/binaries/playwright" in content
         assert 'cd /d "%~dp0"' in content
+        assert "PYTHON_MAJOR" in content
+        assert "VENV_PYTHON_MAJOR" in content
+        assert "^>=" not in content
 
     windows_installer = (ROOT / "easy-install.bat").read_text(encoding="utf-8")
     assert "LANHU_INSTALL_NONINTERACTIVE" in windows_installer

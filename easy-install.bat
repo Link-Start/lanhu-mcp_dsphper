@@ -47,9 +47,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set "PYTHON_OK="
-for /f %%V in ('python -c "import sys; print(1 if sys.version_info ^>= (3, 10) else 0)" 2^>nul') do set "PYTHON_OK=%%V"
-if not "!PYTHON_OK!"=="1" (
+set "PYTHON_MAJOR="
+set "PYTHON_MINOR="
+for /f "tokens=1,2 delims=." %%A in ('python -c "import sys; print(str(sys.version_info.major) + '.' + str(sys.version_info.minor))" 2^>nul') do (
+    set "PYTHON_MAJOR=%%A"
+    set "PYTHON_MINOR=%%B"
+)
+set "PYTHON_OK=1"
+if not defined PYTHON_MAJOR set "PYTHON_OK="
+if defined PYTHON_MAJOR if !PYTHON_MAJOR! LSS 3 set "PYTHON_OK="
+if defined PYTHON_MAJOR if !PYTHON_MAJOR! EQU 3 if !PYTHON_MINOR! LSS 10 set "PYTHON_OK="
+if not defined PYTHON_OK (
     for /f "tokens=2" %%V in ('python --version 2^>^&1') do set "PYTHON_VERSION=%%V"
     echo [ERROR] 需要 Python 3.10 或更高版本，当前版本：!PYTHON_VERSION!
     echo 请从 https://www.python.org/downloads/ 安装新版 Python 后重新运行
@@ -94,9 +102,17 @@ if not exist "venv\Scripts\python.exe" (
     if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
-set "VENV_PYTHON_OK="
-for /f %%V in ('venv\Scripts\python.exe -c "import sys; print(1 if sys.version_info ^>= (3, 10) else 0)" 2^>nul') do set "VENV_PYTHON_OK=%%V"
-if not "!VENV_PYTHON_OK!"=="1" (
+set "VENV_PYTHON_MAJOR="
+set "VENV_PYTHON_MINOR="
+for /f "tokens=1,2 delims=." %%A in ('venv\Scripts\python.exe -c "import sys; print(str(sys.version_info.major) + '.' + str(sys.version_info.minor))" 2^>nul') do (
+    set "VENV_PYTHON_MAJOR=%%A"
+    set "VENV_PYTHON_MINOR=%%B"
+)
+set "VENV_PYTHON_OK=1"
+if not defined VENV_PYTHON_MAJOR set "VENV_PYTHON_OK="
+if defined VENV_PYTHON_MAJOR if !VENV_PYTHON_MAJOR! LSS 3 set "VENV_PYTHON_OK="
+if defined VENV_PYTHON_MAJOR if !VENV_PYTHON_MAJOR! EQU 3 if !VENV_PYTHON_MINOR! LSS 10 set "VENV_PYTHON_OK="
+if not defined VENV_PYTHON_OK (
     echo [ERROR] 现有 venv 的 Python 版本低于 3.10
     echo 请删除 venv 目录后重新运行本脚本
     if not defined LANHU_INSTALL_NONINTERACTIVE pause

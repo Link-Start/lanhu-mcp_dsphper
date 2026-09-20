@@ -13,6 +13,10 @@ Every CI and tagged release runs a clean Windows installation job on GitHub's `w
 - starts `lanhu-mcp.exe --transport stdio`, completes the MCP initialize handshake, and verifies all 16 tools;
 - confirms the caller directory was not polluted by relative installer paths.
 
+## Fixed during Windows validation
+
+The first real Windows gate exposed a `cmd.exe` parsing bug in the old inline Python version comparison: Python 3.13.15 was incorrectly reported as older than 3.10. Version detection now reads numeric major/minor fields and compares them with batch-native `LSS`/`EQU` operators.
+
 ## Installer behavior
 
 Normal Windows users still get the guided interactive flow. `LANHU_INSTALL_NONINTERACTIVE=1` and `LANHU_SKIP_BROWSER_INSTALL=1` are audit/automation controls; the release gate separately downloads and launches Chromium so browser support remains verified.
