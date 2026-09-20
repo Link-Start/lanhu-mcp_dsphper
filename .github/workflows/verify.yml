@@ -18,7 +18,7 @@ jobs:
         python: ['3.10', '3.13']
     env:
       # CI uses synthetic fixtures and mocked responses, never account credentials.
-      LANHU_COOKIE: ci-placeholder-not-a-real-cookie
+      LANHU_COOKIE: session=ci-placeholder-not-a-real-cookie
       DDS_COOKIE: ci-placeholder-not-a-real-cookie
       FEISHU_WEBHOOK_URL: ''
     steps:
@@ -43,7 +43,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 25
     env:
-      LANHU_COOKIE: ci-placeholder-not-a-real-cookie
+      LANHU_COOKIE: session=ci-placeholder-not-a-real-cookie
       DDS_COOKIE: ci-placeholder-not-a-real-cookie
       FEISHU_WEBHOOK_URL: ''
       LANHU_INSTALL_NONINTERACTIVE: '1'
@@ -61,7 +61,7 @@ jobs:
       - name: Run the Windows installer from outside the checkout
         shell: pwsh
         run: |
-          Set-Content -Path .env -Value 'LANHU_COOKIE="ci-placeholder-not-a-real-cookie"' -Encoding utf8
+          Set-Content -Path .env -Value 'LANHU_COOKIE="session=ci-placeholder-not-a-real-cookie"' -Encoding utf8
           $caller = Join-Path $env:RUNNER_TEMP 'lanhu-windows-caller'
           New-Item -ItemType Directory -Force -Path $caller | Out-Null
           Push-Location $caller
@@ -138,7 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      LANHU_COOKIE: ci-placeholder-not-a-real-cookie
+      LANHU_COOKIE: session=ci-placeholder-not-a-real-cookie
       DDS_COOKIE: ci-placeholder-not-a-real-cookie
       FEISHU_WEBHOOK_URL: ''
     steps:
