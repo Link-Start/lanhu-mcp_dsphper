@@ -64,11 +64,18 @@ jobs:
           Set-Content -Path .env -Value 'LANHU_COOKIE="session=ci-placeholder-not-a-real-cookie"' -Encoding utf8
           $caller = Join-Path $env:RUNNER_TEMP 'lanhu-windows-caller'
           New-Item -ItemType Directory -Force -Path $caller | Out-Null
+          $installerLog = Join-Path $env:RUNNER_TEMP 'windows-installer.log'
           Push-Location $caller
-          & (Join-Path $env:GITHUB_WORKSPACE 'easy-install.bat')
+          & (Join-Path $env:GITHUB_WORKSPACE 'easy-install.bat') *> $installerLog
           $installerExit = $LASTEXITCODE
           Pop-Location
-          if ($installerExit -ne 0) { exit $installerExit }
+          if ($installerExit -ne 0) {
+            $tail = (Get-Content -Path $installerLog -Tail 120) -join "`n"
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($tail))
+            Write-Output "::error title=Windows installer failed::base64:$encoded"
+            exit $installerExit
+          }
+          Get-Content -Path $installerLog
           if (Test-Path (Join-Path $caller 'venv')) { throw 'Installer polluted caller directory with venv' }
           if (Test-Path (Join-Path $caller '.env')) { throw 'Installer polluted caller directory with .env' }
       - name: Check installed CLI and dependencies
