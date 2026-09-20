@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-09-20
+
+### Fixed
+
+- Source installers now prefer Aliyun PyPI and automatically fall back to Tsinghua and official PyPI when the default mirror rejects or cannot serve a current pip client.
+- Explicit `PIP_INDEX_URL` overrides remain authoritative.
+- POSIX and Windows installers change to their own checkout directory before touching relative paths.
+- Added clean-install regression coverage for mirror ordering and checkout-relative execution.
+
+See [v1.8.2 release notes](RELEASE_NOTES_v1.8.2.md) for the public-tag installation audit.
+
 ## [1.8.1] - 2026-09-20
 
 ### Fixed

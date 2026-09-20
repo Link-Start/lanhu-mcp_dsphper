@@ -3,8 +3,12 @@
 
 set -e
 
-# 国内用户默认使用国内镜像；已设置环境变量时尊重用户配置。
-export PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
+# 始终以脚本所在仓库为工作目录，避免从其他目录调用时写错位置。
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# 国内镜像优先；自定义 PIP_INDEX_URL 时只使用用户指定的源。
+CUSTOM_PIP_INDEX_URL="${PIP_INDEX_URL:-}"
 export PLAYWRIGHT_DOWNLOAD_HOST="${PLAYWRIGHT_DOWNLOAD_HOST:-https://cdn.npmmirror.com/binaries/playwright}"
 
 echo "🎨 蓝湖 MCP 服务器 - 快速启动"
@@ -48,10 +52,34 @@ fi
 # 安装依赖
 echo ""
 echo "📥 正在安装依赖..."
-if ! "$VENV_PYTHON" -m pip install --timeout 60 --retries 5 -e .; then
-    echo "❌ 项目依赖下载失败"
-    echo "请检查网络或代理，然后重新运行本脚本。"
-    echo "如需使用自定义 PyPI 镜像，可先设置 PIP_INDEX_URL。"
+install_project() {
+    local indexes=()
+    if [ -n "$CUSTOM_PIP_INDEX_URL" ]; then
+        indexes=("$CUSTOM_PIP_INDEX_URL")
+    else
+        indexes=(
+            "https://mirrors.aliyun.com/pypi/simple"
+            "https://pypi.tuna.tsinghua.edu.cn/simple"
+            "https://pypi.org/simple"
+        )
+    fi
+
+    local index
+    for index in "${indexes[@]}"; do
+        echo "正在使用 Python 包源：$index"
+        if PIP_INDEX_URL="$index" "$VENV_PYTHON" -m pip install --timeout 60 --retries 5 -e .; then
+            export PIP_INDEX_URL="$index"
+            return 0
+        fi
+        echo -e "${YELLOW:-}⚠️  当前包源不可用，尝试下一个...${NC:-}"
+    done
+    return 1
+}
+
+if ! install_project; then
+    echo -e "${RED:-}❌ 项目依赖下载失败${NC:-}"
+    echo "已尝试可用的国内镜像与备用源，请检查网络或代理后重试。"
+    echo "如需固定使用自定义 PyPI 镜像，可先设置 PIP_INDEX_URL。"
     exit 1
 fi
 "$VENV_PYTHON" -m pip check

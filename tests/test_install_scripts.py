@@ -36,9 +36,11 @@ exit 1
     env = os.environ.copy()
     env["PATH"] = f"{fake_bin}{os.pathsep}{os.defpath}"
     env["TERM"] = "dumb"
+    caller_dir = tmp_path / "caller"
+    caller_dir.mkdir()
     result = subprocess.run(
         ["bash", str(installer)],
-        cwd=tmp_path,
+        cwd=caller_dir,
         env=env,
         input="\n",
         text=True,
@@ -51,6 +53,90 @@ exit 1
     assert "Python 3.10" in output
     assert "3.9.6" in output
     assert not (tmp_path / "venv").exists()
+    assert not (caller_dir / "venv").exists()
+
+
+def test_easy_installer_falls_back_between_package_indexes(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    shutil.copy2(ROOT / "easy-install.sh", repo / "easy-install.sh")
+    (repo / ".env").write_text('LANHU_COOKIE="session=test"\n', encoding="utf-8")
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    mirror_log = tmp_path / "mirrors.log"
+    venv_template = tmp_path / "venv-python"
+    venv_template.write_text(
+        """#!/bin/sh
+case "$*" in
+  *"version_info >= (3, 10)"*) exit 0 ;;
+  *"version_info[:3]"*) echo 3.14.6; exit 0 ;;
+  *"-m pip install"*)
+    echo "$PIP_INDEX_URL" >> "$MIRROR_LOG"
+    case "$PIP_INDEX_URL" in
+      *mirrors.aliyun.com*) exit 1 ;;
+      *pypi.tuna.tsinghua.edu.cn*) exit 0 ;;
+      *) exit 9 ;;
+    esac ;;
+  *"-m pip check"*) exit 0 ;;
+  *"-m playwright install chromium"*) exit 0 ;;
+esac
+exit 0
+""",
+        encoding="utf-8",
+    )
+    venv_template.chmod(0o755)
+    fake_python = fake_bin / "python3"
+    fake_python.write_text(
+        """#!/bin/sh
+case "$*" in
+  *"version_info >= (3, 10)"*) exit 0 ;;
+  *"version_info[:3]"*) echo 3.14.6; exit 0 ;;
+  *"-m pip --version"*) echo 'pip 26.1'; exit 0 ;;
+  *"-m venv venv"*)
+    mkdir -p venv/bin
+    cp "$FAKE_VENV_TEMPLATE" venv/bin/python
+    chmod +x venv/bin/python
+    exit 0 ;;
+esac
+exit 1
+""",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    for name in ("python", "python3.13", "python3.12", "python3.11", "python3.10"):
+        (fake_bin / name).symlink_to(fake_python)
+    fake_open = fake_bin / "open"
+    fake_open.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_open.chmod(0o755)
+
+    caller = tmp_path / "caller"
+    caller.mkdir()
+    env = os.environ.copy()
+    env.update(
+        PATH=f"{fake_bin}{os.pathsep}{os.defpath}",
+        TERM="dumb",
+        MIRROR_LOG=str(mirror_log),
+        FAKE_VENV_TEMPLATE=str(venv_template),
+    )
+    env.pop("PIP_INDEX_URL", None)
+    result = subprocess.run(
+        ["bash", str(repo / "easy-install.sh")],
+        cwd=caller,
+        env=env,
+        input="\nn\n\nn\n",
+        text=True,
+        capture_output=True,
+        timeout=20,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert mirror_log.read_text(encoding="utf-8").splitlines() == [
+        "https://mirrors.aliyun.com/pypi/simple",
+        "https://pypi.tuna.tsinghua.edu.cn/simple",
+    ]
+    assert (repo / "venv").is_dir()
+    assert not (caller / "venv").exists()
 
 
 def test_installers_install_the_package_and_default_to_domestic_mirrors():
@@ -58,15 +144,23 @@ def test_installers_install_the_package_and_default_to_domestic_mirrors():
         content = (ROOT / filename).read_text(encoding="utf-8")
         assert "pip install --timeout 60 --retries 5 -e ." in content
         assert "pip install --upgrade pip" not in content
+        assert "https://mirrors.aliyun.com/pypi/simple" in content
         assert "https://pypi.tuna.tsinghua.edu.cn/simple" in content
+        assert content.index("mirrors.aliyun.com") < content.index("pypi.tuna.tsinghua.edu.cn")
+        assert "https://pypi.org/simple" in content
         assert "https://cdn.npmmirror.com/binaries/playwright" in content
+        assert "SCRIPT_DIR" in content
 
     for filename in ("easy-install.bat", "quickstart.bat"):
         content = (ROOT / filename).read_text(encoding="utf-8")
         assert "pip install --timeout 60 --retries 5 -e ." in content
         assert "pip install --upgrade pip" not in content
+        assert "https://mirrors.aliyun.com/pypi/simple" in content
         assert "https://pypi.tuna.tsinghua.edu.cn/simple" in content
+        assert content.index("mirrors.aliyun.com") < content.index("pypi.tuna.tsinghua.edu.cn")
+        assert "https://pypi.org/simple" in content
         assert "https://cdn.npmmirror.com/binaries/playwright" in content
+        assert 'cd /d "%~dp0"' in content
 
 
 def test_stdio_launcher_reports_missing_install(tmp_path):

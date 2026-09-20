@@ -29,7 +29,7 @@
 
 一个面向蓝湖设计交付与需求阅读的 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器。由 MCP 提供来源数据和资源，大模型结合画面理解并适配目标工程。
 
-**v1.8.1：修复非 Docker 一键安装，默认使用国内 Python 与 Chromium 镜像。** [版本说明](RELEASE_NOTES_v1.8.1.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
+**v1.8.2：国内镜像自动回退，并修复从任意目录调用安装脚本。** [版本说明](RELEASE_NOTES_v1.8.2.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
 
 
 🔥 **核心创新**：
@@ -184,7 +184,7 @@ bash easy-install.sh        # Linux/Mac
 easy-install.bat           # Windows
 ```
 
-> 💡 `easy-install.sh` 会自动安装依赖、引导获取 Cookie 并配置环境。国内用户默认使用清华 PyPI 与 npmmirror Chromium 镜像；可通过 `PIP_INDEX_URL`、`PLAYWRIGHT_DOWNLOAD_HOST` 覆盖。
+> 💡 `easy-install.sh` 会自动安装依赖、引导获取 Cookie 并配置环境。国内用户默认优先使用阿里云 PyPI，并自动回退到清华和官方 PyPI；Chromium 使用 npmmirror；可通过 `PIP_INDEX_URL`、`PLAYWRIGHT_DOWNLOAD_HOST` 覆盖。
 
 <details>
 <summary>或者手动安装（不推荐）</summary>

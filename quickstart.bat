@@ -1,8 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
-REM 国内用户默认使用国内镜像；已设置环境变量时尊重用户配置。
-if not defined PIP_INDEX_URL set "PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple"
+REM 国内镜像优先；自定义 PIP_INDEX_URL 时只使用用户指定的源。
+set "CUSTOM_PIP_INDEX_URL=%PIP_INDEX_URL%"
 if not defined PLAYWRIGHT_DOWNLOAD_HOST set "PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright"
 chcp 65001 >nul 2>&1  :: 强制切换控制台编码为 UTF-8
 powershell -Command "$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding" >nul 2>&1
@@ -67,11 +68,22 @@ if not "!VENV_PYTHON_OK!"=="1" (
 REM 安装项目及依赖
 echo.
 echo 正在安装项目及依赖...
-venv\Scripts\python.exe -m pip install --timeout 60 --retries 5 -e .
-if errorlevel 1 (
+set "INSTALL_OK="
+if defined CUSTOM_PIP_INDEX_URL (
+    call :install_project "!CUSTOM_PIP_INDEX_URL!"
+    if not errorlevel 1 set "INSTALL_OK=1"
+) else (
+    call :install_project "https://mirrors.aliyun.com/pypi/simple"
+    if not errorlevel 1 set "INSTALL_OK=1"
+    if not defined INSTALL_OK call :install_project "https://pypi.tuna.tsinghua.edu.cn/simple"
+    if not errorlevel 1 set "INSTALL_OK=1"
+    if not defined INSTALL_OK call :install_project "https://pypi.org/simple"
+    if not errorlevel 1 set "INSTALL_OK=1"
+)
+if not defined INSTALL_OK (
     echo [ERROR] 项目依赖下载失败
-    echo 请检查网络或代理，然后重新运行本脚本
-    echo 如需使用自定义 PyPI 镜像，可先设置 PIP_INDEX_URL
+    echo 已尝试可用的国内镜像与备用源，请检查网络或代理后重试
+    echo 如需固定使用自定义 PyPI 镜像，可先设置 PIP_INDEX_URL
     pause
     exit /b 1
 )
@@ -175,6 +187,7 @@ REM 运行服务器
 venv\Scripts\lanhu-mcp.exe --transport http
 
 pause
+exit /b 0
 
 REM 计算字符串长度的函数
 :strlen
@@ -189,3 +202,13 @@ if defined str (
 )
 endlocal & set "%~2=%len%"
 goto :eof
+
+:install_project
+set "PIP_INDEX_URL=%~1"
+echo 正在使用 Python 包源：%PIP_INDEX_URL%
+venv\Scripts\python.exe -m pip install --timeout 60 --retries 5 -e .
+if errorlevel 1 (
+    echo [WARN] 当前包源不可用，尝试下一个...
+    exit /b 1
+)
+exit /b 0

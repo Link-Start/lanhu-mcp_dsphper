@@ -14,7 +14,7 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for reading Lanhu design documents, Axure prototypes, UI designs and source assets, with a server-local team message board.
 
-**v1.8.1 fixes the non-Docker source installer and defaults installer downloads to domestic mirrors.** See [the release notes](RELEASE_NOTES_v1.8.1.md).
+**v1.8.2 adds automatic package-index fallback and makes installer paths independent of the caller's working directory.** See [the release notes](RELEASE_NOTES_v1.8.2.md).
 
 **MCP client integration:**
 
@@ -121,7 +121,7 @@ venv\Scripts\python.exe -m playwright install chromium
 copy .env.example .env
 ```
 
-Edit `.env` and replace `your_lanhu_cookie_here` with your Lanhu Cookie. macOS may still provide Python 3.9 as `/usr/bin/python3`; verify `python3 --version` before creating the environment. The bundled installer scripts default to Tsinghua PyPI and npmmirror for Chromium; set `PIP_INDEX_URL` or `PLAYWRIGHT_DOWNLOAD_HOST` to override them.
+Edit `.env` and replace `your_lanhu_cookie_here` with your Lanhu Cookie. macOS may still provide Python 3.9 as `/usr/bin/python3`; verify `python3 --version` before creating the environment. The bundled installer scripts prefer Aliyun PyPI with automatic Tsinghua/PyPI fallback and use npmmirror for Chromium; set `PIP_INDEX_URL` or `PLAYWRIGHT_DOWNLOAD_HOST` to override them.
 
 With `uv`, create the environment first: `uv venv venv --python 3.13`, then run `uv pip install --python venv/bin/python -e .`.
 
