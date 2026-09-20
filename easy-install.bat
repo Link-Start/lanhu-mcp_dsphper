@@ -25,7 +25,7 @@ echo 欢迎！这个脚本会帮你自动完成所有安装步骤
 echo 预计耗时：3-5 分钟
 echo.
 echo 按 Enter 开始安装，或按 Ctrl+C 取消
-pause >nul
+if not defined LANHU_INSTALL_NONINTERACTIVE pause >nul
 
 REM ============================================
 REM 步骤 1: 环境检查
@@ -43,7 +43,7 @@ if errorlevel 1 (
     echo [ERROR] 未检测到 Python
     echo 请从 https://www.python.org/downloads/ 安装 Python 3.10 或更高版本
     echo 安装时请勾选 "Add Python to PATH"
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 
@@ -53,7 +53,7 @@ if not "!PYTHON_OK!"=="1" (
     for /f "tokens=2" %%V in ('python --version 2^>^&1') do set "PYTHON_VERSION=%%V"
     echo [ERROR] 需要 Python 3.10 或更高版本，当前版本：!PYTHON_VERSION!
     echo 请从 https://www.python.org/downloads/ 安装新版 Python 后重新运行
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 
@@ -62,7 +62,7 @@ echo [OK] Python !PYTHON_VERSION!
 python -m pip --version >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] 当前 Python 没有可用的 pip
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 
@@ -91,7 +91,7 @@ if not exist "venv" (
 if not exist "venv\Scripts\python.exe" (
     echo [ERROR] venv 目录不是可用的 Python 虚拟环境
     echo 请删除 venv 目录后重新运行本脚本
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 set "VENV_PYTHON_OK="
@@ -99,7 +99,7 @@ for /f %%V in ('venv\Scripts\python.exe -c "import sys; print(1 if sys.version_i
 if not "!VENV_PYTHON_OK!"=="1" (
     echo [ERROR] 现有 venv 的 Python 版本低于 3.10
     echo 请删除 venv 目录后重新运行本脚本
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 
@@ -122,7 +122,7 @@ if not defined INSTALL_OK (
     echo [ERROR] 项目依赖下载失败
     echo 已尝试可用的国内镜像与备用源，请检查网络或代理后重试
     echo 如需固定使用自定义 PyPI 镜像，可先设置 PIP_INDEX_URL
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 venv\Scripts\python.exe -m pip check
@@ -130,15 +130,19 @@ venv\Scripts\python.exe -m pip check
 echo ✅ 依赖安装完成
 
 REM 安装 Playwright 浏览器
-echo.
-echo 正在安装 Playwright 浏览器...
-echo （首次安装需要下载 Chromium，可能需要 1-2 分钟）
-venv\Scripts\python.exe -m playwright install chromium
-if errorlevel 1 (
-    echo [ERROR] Chromium 下载失败
-    echo 请检查网络后重试，也可通过 PLAYWRIGHT_DOWNLOAD_HOST 指定其他镜像
-    pause
-    exit /b 1
+if defined LANHU_SKIP_BROWSER_INSTALL (
+    echo [INFO] 已按 LANHU_SKIP_BROWSER_INSTALL 跳过 Chromium 下载
+) else (
+    echo.
+    echo 正在安装 Playwright 浏览器...
+    echo （首次安装需要下载 Chromium，可能需要 1-2 分钟）
+    venv\Scripts\python.exe -m playwright install chromium
+    if errorlevel 1 (
+        echo [ERROR] Chromium 下载失败
+        echo 请检查网络后重试，也可通过 PLAYWRIGHT_DOWNLOAD_HOST 指定其他镜像
+        if not defined LANHU_INSTALL_NONINTERACTIVE pause
+        exit /b 1
+    )
 )
 
 echo.
@@ -162,7 +166,7 @@ if not exist ".env" (
         echo ✅ 已创建 .env 配置文件
     ) else (
         echo ❌ 未找到 .env.example 文件
-        pause
+        if not defined LANHU_INSTALL_NONINTERACTIVE pause
         exit /b 1
     )
 ) else (
@@ -200,8 +204,12 @@ echo ━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 
 REM 尝试打开浏览器和文件
-set /p OPEN_FILES="我可以帮你打开蓝湖网站和 .env 文件吗？(y/n) [y]: "
-if "!OPEN_FILES!"=="" set OPEN_FILES=y
+if defined LANHU_INSTALL_NONINTERACTIVE (
+    set "OPEN_FILES=n"
+) else (
+    set /p OPEN_FILES="我可以帮你打开蓝湖网站和 .env 文件吗？(y/n) [y]: "
+    if "!OPEN_FILES!"=="" set OPEN_FILES=y
+)
 if /i "!OPEN_FILES!"=="y" (
     start https://lanhuapp.com
     start notepad .env
@@ -210,7 +218,7 @@ if /i "!OPEN_FILES!"=="y" (
 )
 
 echo 完成配置后，按 Enter 继续...
-pause >nul
+if not defined LANHU_INSTALL_NONINTERACTIVE pause >nul
 
 REM 读取 .env 文件中的 Cookie
 set LANHU_COOKIE=
@@ -225,13 +233,13 @@ REM 验证 Cookie 不为空
 if "!LANHU_COOKIE!"=="" (
     echo ❌ Cookie 未配置或配置不正确
     echo 请确保在 .env 文件中正确设置了 LANHU_COOKIE
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 
 if "!LANHU_COOKIE!"=="your_lanhu_cookie_here" (
     echo ❌ Cookie 未修改，请在 .env 文件中设置正确的 Cookie
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
     exit /b 1
 )
 
@@ -244,7 +252,7 @@ if errorlevel 1 (
         set /p CONTINUE_ANYWAY="确定要继续吗？(y/n) [n]: "
         if /i not "!CONTINUE_ANYWAY!"=="y" (
             echo 安装已取消
-            pause
+            if not defined LANHU_INSTALL_NONINTERACTIVE pause
             exit /b 1
         )
     )
@@ -281,8 +289,12 @@ echo 🚀 步骤 5/5: 启动服务
 echo ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo.
 
-set /p START_NOW="是否现在启动服务？(y/n) [y]: "
-if "!START_NOW!"=="" set START_NOW=y
+if defined LANHU_INSTALL_NONINTERACTIVE (
+    set "START_NOW=n"
+) else (
+    set /p START_NOW="是否现在启动服务？(y/n) [y]: "
+    if "!START_NOW!"=="" set START_NOW=y
+)
 
 if /i "!START_NOW!"=="y" (
     echo.
@@ -318,7 +330,7 @@ if /i "!START_NOW!"=="y" (
     echo 稍后运行服务器，请执行：
     echo   venv\Scripts\lanhu-mcp.exe --transport http
     echo.
-    pause
+    if not defined LANHU_INSTALL_NONINTERACTIVE pause
 )
 
 exit /b 0

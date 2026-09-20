@@ -14,7 +14,7 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for reading Lanhu design documents, Axure prototypes, UI designs and source assets, with a server-local team message board.
 
-**v1.8.2 adds automatic package-index fallback and makes installer paths independent of the caller's working directory.** See [the release notes](RELEASE_NOTES_v1.8.2.md).
+**v1.8.3 adds a real Windows installation, Chromium, CLI, and MCP handshake release gate.** See [the release notes](RELEASE_NOTES_v1.8.3.md).
 
 **MCP client integration:**
 

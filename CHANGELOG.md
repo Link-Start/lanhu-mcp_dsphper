@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-09-20
+
+### Added
+
+- GitHub release verification now runs the Windows source installer on `windows-latest`.
+- The Windows gate installs dependencies, downloads and launches Chromium, checks the installed CLI, and completes an MCP stdio handshake.
+
+### Fixed
+
+- `easy-install.bat` supports an explicit noninteractive audit mode without changing the normal user prompts.
+- Windows installer failures no longer wait for interactive `pause` input in automation.
+
+See [v1.8.3 release notes](RELEASE_NOTES_v1.8.3.md) for the Windows validation contract.
+
 ## [1.8.2] - 2026-09-20
 
 ### Fixed

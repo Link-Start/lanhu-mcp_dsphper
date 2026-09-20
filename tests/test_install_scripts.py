@@ -162,6 +162,22 @@ def test_installers_install_the_package_and_default_to_domestic_mirrors():
         assert "https://cdn.npmmirror.com/binaries/playwright" in content
         assert 'cd /d "%~dp0"' in content
 
+    windows_installer = (ROOT / "easy-install.bat").read_text(encoding="utf-8")
+    assert "LANHU_INSTALL_NONINTERACTIVE" in windows_installer
+    assert "LANHU_SKIP_BROWSER_INSTALL" in windows_installer
+    assert not any(line.strip() == "pause" for line in windows_installer.splitlines())
+
+
+def test_windows_install_is_a_release_gate():
+    workflow = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
+    assert "windows-install:" in workflow
+    assert "runs-on: windows-latest" in workflow
+    assert "easy-install.bat" in workflow
+    assert "playwright install chromium" in workflow
+    assert "Windows Chromium launch succeeded" in workflow
+    assert "Windows MCP stdio handshake exposed 16 tools" in workflow
+    assert "needs: [tests, windows-install]" in workflow
+
 
 def test_stdio_launcher_reports_missing_install(tmp_path):
     launcher = tmp_path / "run-stdio.sh"

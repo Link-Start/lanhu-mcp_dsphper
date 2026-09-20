@@ -29,7 +29,7 @@
 
 一个面向蓝湖设计交付与需求阅读的 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器。由 MCP 提供来源数据和资源，大模型结合画面理解并适配目标工程。
 
-**v1.8.2：国内镜像自动回退，并修复从任意目录调用安装脚本。** [版本说明](RELEASE_NOTES_v1.8.2.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
+**v1.8.3：Windows 一键安装进入真实 CI 发布门禁。** [版本说明](RELEASE_NOTES_v1.8.3.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
 
 
 🔥 **核心创新**：
