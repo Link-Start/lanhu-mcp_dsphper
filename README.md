@@ -29,7 +29,7 @@
 
 一个面向蓝湖设计交付与需求阅读的 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器。由 MCP 提供来源数据和资源，大模型结合画面理解并适配目标工程。
 
-**v1.8.0：设计总览与区域定位、SVG/原图资源交付、富文本和字体依赖。** [版本说明](RELEASE_NOTES_v1.8.0.md) · [新工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
+**v1.8.1：修复非 Docker 一键安装，默认使用国内 Python 与 Chromium 镜像。** [版本说明](RELEASE_NOTES_v1.8.1.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
 
 
 🔥 **核心创新**：
@@ -157,22 +157,21 @@ AI 会自动完成：克隆项目 → 安装依赖 → 引导获取 Cookie → �
 git clone https://github.com/dsphper/lanhu-mcp.git
 cd lanhu-mcp
 
-# 2. 配置环境（会引导你输入 Cookie）
-bash setup-env.sh        # Linux/Mac
-# 或
-setup-env.bat           # Windows
+# 2. 创建配置并填写 Cookie
+cp .env.example .env
+# 编辑 .env，将 LANHU_COOKIE 改为你自己的 Cookie
 
-# 3. 启动服务
-docker-compose up -d
+# 3. 构建并启动服务
+docker compose up -d --build
 ```
 
-> 💡 `setup-env.sh` 会交互式引导你获取并配置蓝湖 Cookie，自动生成 `.env` 文件
+Windows 用户可用 `copy .env.example .env` 创建配置文件。旧版 Docker Compose 可将 `docker compose` 替换为 `docker-compose`。
 
 📖 详细文档：[Docker 部署指南](DEPLOY.md)
 
 **2.2 源码运行**
 
-前置要求：Python 3.10+
+前置要求：Python 3.10+。macOS 自带的 Python 3.9 不满足要求，请先运行 `python3 --version` 确认版本。
 
 ```bash
 # 1. 克隆项目
@@ -185,17 +184,28 @@ bash easy-install.sh        # Linux/Mac
 easy-install.bat           # Windows
 ```
 
-> 💡 `easy-install.sh` 会自动安装依赖、引导获取 Cookie 并配置环境
+> 💡 `easy-install.sh` 会自动安装依赖、引导获取 Cookie 并配置环境。国内用户默认使用清华 PyPI 与 npmmirror Chromium 镜像；可通过 `PIP_INDEX_URL`、`PLAYWRIGHT_DOWNLOAD_HOST` 覆盖。
 
 <details>
 <summary>或者手动安装（不推荐）</summary>
 
-```bash
-# 安装依赖
-pip install -r requirements.txt
-playwright install chromium
+Linux / macOS：
 
-# 手动配置（见下方"配置"部分）
+```bash
+python3 -m venv venv
+./venv/bin/python -m pip install -e .
+./venv/bin/python -m playwright install chromium
+cp .env.example .env
+# 编辑 .env，将 LANHU_COOKIE 改为你自己的 Cookie
+```
+
+Windows：
+
+```bat
+python -m venv venv
+venv\Scripts\python.exe -m pip install -e .
+venv\Scripts\python.exe -m playwright install chromium
+copy .env.example .env
 ```
 </details>
 
@@ -251,7 +261,8 @@ export DEBUG="false"               # 调试模式（true/false）
 
 **源码运行：**
 ```bash
-python lanhu_mcp_server.py
+./venv/bin/lanhu-mcp --transport http       # Linux/macOS
+venv\Scripts\lanhu-mcp.exe --transport http  # Windows
 ```
 
 **按需启动（stdio，本地 MCP 客户端推荐）：**
@@ -866,7 +877,7 @@ A: 重新登录蓝湖网页版，获取新的 Cookie 并更新环境变量或配
 
 A: 确保系统已安装 Playwright 浏览器：
 ```bash
-playwright install chromium
+./venv/bin/python -m playwright install chromium
 ```
 </details>
 
@@ -905,7 +916,7 @@ A: 删除 `data/` 目录下的对应缓存文件即可。系统会自动重新�
 
 ```bash
 # 安装开发依赖
-pip install -r requirements.txt
+python -m pip install -e '.[dev]'
 
 # 运行测试
 python -m pytest tests/

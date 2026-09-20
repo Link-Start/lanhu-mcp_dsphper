@@ -14,6 +14,8 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for reading Lanhu design documents, Axure prototypes, UI designs and source assets, with a server-local team message board.
 
+**v1.8.1 fixes the non-Docker source installer and defaults installer downloads to domestic mirrors.** See [the release notes](RELEASE_NOTES_v1.8.1.md).
+
 **MCP client integration:**
 
 Client support depends on its MCP transport and image/resource capabilities. For visual design work, use a multimodal model and a client that can display MCP images and read resources.
@@ -106,13 +108,22 @@ The model interprets component roles and chooses how to use assets. Python prese
 git clone https://github.com/dsphper/lanhu-mcp.git
 cd lanhu-mcp
 
-# Install the package and dependencies, including the CLI and bundle installer
-python -m pip install -e .
-python -m playwright install chromium
+# Create an isolated environment, then install the package and Chromium
+python3 -m venv venv
+./venv/bin/python -m pip install -e .
+./venv/bin/python -m playwright install chromium
+cp .env.example .env
 
-# Or use uv in your Python environment
-uv pip install -e .
+# Windows equivalents
+python -m venv venv
+venv\Scripts\python.exe -m pip install -e .
+venv\Scripts\python.exe -m playwright install chromium
+copy .env.example .env
 ```
+
+Edit `.env` and replace `your_lanhu_cookie_here` with your Lanhu Cookie. macOS may still provide Python 3.9 as `/usr/bin/python3`; verify `python3 --version` before creating the environment. The bundled installer scripts default to Tsinghua PyPI and npmmirror for Chromium; set `PIP_INDEX_URL` or `PLAYWRIGHT_DOWNLOAD_HOST` to override them.
+
+With `uv`, create the environment first: `uv venv venv --python 3.13`, then run `uv pip install --python venv/bin/python -e .`.
 
 For an existing source checkout, upgrade dependencies with `python -m pip install -U -r requirements.txt` and reinstall the package with `python -m pip install -e .`. Restart the server and reconnect the MCP client so it discovers all 16 tools. Docker users should rebuild the image; restarting an old image does not load the new package or dependencies.
 
@@ -169,13 +180,14 @@ export DEBUG="false"               # Debug mode (true/false)
 **Method 1: Direct Run**
 
 ```bash
-python lanhu_mcp_server.py
+# Linux/macOS
+./venv/bin/lanhu-mcp --transport http --host 127.0.0.1 --port 8000
 
-# Equivalent installed console command
-lanhu-mcp --transport http --host 127.0.0.1 --port 8000
+# Windows
+venv\Scripts\lanhu-mcp.exe --transport http --host 127.0.0.1 --port 8000
 
 # For a client that starts its own stdio server
-lanhu-mcp --transport stdio
+./run-stdio.sh
 ```
 
 Server will start at `http://localhost:8000/mcp`.
@@ -630,7 +642,7 @@ A: Re-login to Lanhu web version, get new Cookie and update environment variable
 
 A: Ensure Playwright browsers are installed:
 ```bash
-playwright install chromium
+./venv/bin/python -m playwright install chromium
 ```
 </details>
 
@@ -669,7 +681,7 @@ Contributions are welcome! Please follow these steps:
 
 ```bash
 # Install development dependencies
-pip install -r requirements.txt
+python -m pip install -e '.[dev]'
 
 # Run tests
 python -m pytest tests/

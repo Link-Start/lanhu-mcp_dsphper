@@ -1,5 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
+
+REM 国内用户默认使用国内镜像；已设置环境变量时尊重用户配置。
+if not defined PIP_INDEX_URL set "PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple"
+if not defined PLAYWRIGHT_DOWNLOAD_HOST set "PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright"
 chcp 65001 >nul 2>&1  :: 强制切换控制台编码为 UTF-8
 powershell -Command "$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding" >nul 2>&1
 REM 蓝湖 MCP 服务器快速启动脚本（Windows）
@@ -12,14 +16,31 @@ echo.
 REM 检查 Python 版本
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ❌ 错误：未安装 Python
-    echo 请从 https://www.python.org/ 安装 Python 3.10 或更高版本
+    echo [ERROR] 未检测到 Python
+    echo 请从 https://www.python.org/downloads/ 安装 Python 3.10 或更高版本
+    echo 安装时请勾选 "Add Python to PATH"
     pause
     exit /b 1
 )
 
-echo [OK] Python 已安装
-python --version
+set "PYTHON_OK="
+for /f %%V in ('python -c "import sys; print(1 if sys.version_info ^>= (3, 10) else 0)" 2^>nul') do set "PYTHON_OK=%%V"
+if not "!PYTHON_OK!"=="1" (
+    for /f "tokens=2" %%V in ('python --version 2^>^&1') do set "PYTHON_VERSION=%%V"
+    echo [ERROR] 需要 Python 3.10 或更高版本，当前版本：!PYTHON_VERSION!
+    echo 请从 https://www.python.org/downloads/ 安装新版 Python 后重新运行
+    pause
+    exit /b 1
+)
+
+for /f "tokens=2" %%V in ('python --version') do set "PYTHON_VERSION=%%V"
+echo [OK] Python !PYTHON_VERSION!
+python -m pip --version >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] 当前 Python 没有可用的 pip
+    pause
+    exit /b 1
+)
 
 REM 检查虚拟环境是否存在
 if not exist "venv" (
@@ -28,22 +49,44 @@ if not exist "venv" (
     python -m venv venv
     echo [OK] 虚拟环境创建完成
 )
+if not exist "venv\Scripts\python.exe" (
+    echo [ERROR] venv 目录不是可用的 Python 虚拟环境
+    echo 请删除 venv 目录后重新运行本脚本
+    pause
+    exit /b 1
+)
+set "VENV_PYTHON_OK="
+for /f %%V in ('venv\Scripts\python.exe -c "import sys; print(1 if sys.version_info ^>= (3, 10) else 0)" 2^>nul') do set "VENV_PYTHON_OK=%%V"
+if not "!VENV_PYTHON_OK!"=="1" (
+    echo [ERROR] 现有 venv 的 Python 版本低于 3.10
+    echo 请删除 venv 目录后重新运行本脚本
+    pause
+    exit /b 1
+)
 
-REM 激活虚拟环境
+REM 安装项目及依赖
 echo.
-echo 正在激活虚拟环境...
-call venv\Scripts\activate.bat
-
-REM 安装依赖
-echo.
-echo 正在安装依赖...
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+echo 正在安装项目及依赖...
+venv\Scripts\python.exe -m pip install --timeout 60 --retries 5 -e .
+if errorlevel 1 (
+    echo [ERROR] 项目依赖下载失败
+    echo 请检查网络或代理，然后重新运行本脚本
+    echo 如需使用自定义 PyPI 镜像，可先设置 PIP_INDEX_URL
+    pause
+    exit /b 1
+)
+venv\Scripts\python.exe -m pip check
 
 REM 安装 Playwright 浏览器
 echo.
 echo 正在安装 Playwright 浏览器...
-playwright install chromium
+venv\Scripts\python.exe -m playwright install chromium
+if errorlevel 1 (
+    echo [ERROR] Chromium 下载失败
+    echo 请检查网络后重试，也可通过 PLAYWRIGHT_DOWNLOAD_HOST 指定其他镜像
+    pause
+    exit /b 1
+)
 
 REM 检查 .env 是否存在
 if not exist ".env" (
@@ -129,7 +172,7 @@ echo 按 Ctrl+C 停止服务器
 echo.
 
 REM 运行服务器
-python lanhu_mcp_server.py
+venv\Scripts\lanhu-mcp.exe --transport http
 
 pause
 

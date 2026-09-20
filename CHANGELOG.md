@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-09-20
+
+### Fixed
+- Source installers now reject Python versions below 3.10 before dependency resolution and install the project itself, including the `lanhu-mcp` console entry point.
+- Installer subprocesses no longer fail when terminal clearing is unavailable, and stdio launchers report a direct installation instruction when the virtual environment is missing.
+- Dependency downloads use longer timeouts and retries, without forcing an unrelated pip upgrade.
+
+### Changed
+- Installer scripts default to Tsinghua PyPI and the npmmirror Playwright browser mirror for the project's primarily Chinese user base; both remain overridable through environment variables.
+- Chinese and English setup instructions now create an isolated virtual environment and match the actual launcher paths.
+- Added regression coverage for installer syntax, Python 3.9 rejection, editable package installation, domestic mirror defaults, and missing stdio environments.
+
+See [v1.8.1 release notes](RELEASE_NOTES_v1.8.1.md) for the clean-install validation performed before release.
+
 ## [1.8.0] - 2026-09-10
 
 ### Added
