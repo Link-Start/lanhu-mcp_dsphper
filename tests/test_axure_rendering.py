@@ -139,11 +139,16 @@ async def test_detail_tile_failure_keeps_established_full_screenshot(tmp_path, m
         raise RuntimeError("simulated detail tile failure")
 
     monkeypatch.setattr("lanhu_mcp_server._capture_axure_region", fail_tile)
-    result = await screenshot_page_internal(
-        str(resource), ["page"], str(output), return_base64=False,
-        version_id="tile-fallback", capture_screenshot=True, include_design_info=False,
-        tile_offset=0, tile_limit=2,
-    )
+    try:
+        result = await screenshot_page_internal(
+            str(resource), ["page"], str(output), return_base64=False,
+            version_id="tile-fallback", capture_screenshot=True, include_design_info=False,
+            tile_offset=0, tile_limit=2,
+        )
+    except PlaywrightError as exc:
+        if "Executable doesn't exist" in str(exc):
+            pytest.skip("Playwright Chromium is not installed")
+        raise
 
     page = result[0]
     assert page["success"] is True
