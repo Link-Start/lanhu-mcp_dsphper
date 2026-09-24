@@ -65,9 +65,10 @@ def test_easy_installer_falls_back_between_package_indexes(tmp_path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     mirror_log = tmp_path / "mirrors.log"
+    browser_log = tmp_path / "browsers.log"
     venv_template = tmp_path / "venv-python"
     venv_template.write_text(
-        """#!/bin/sh
+        r"""#!/bin/sh
 case "$*" in
   *"version_info >= (3, 10)"*) exit 0 ;;
   *"version_info[:3]"*) echo 3.14.6; exit 0 ;;
@@ -79,7 +80,14 @@ case "$*" in
       *) exit 9 ;;
     esac ;;
   *"-m pip check"*) exit 0 ;;
-  *"-m playwright install chromium"*) exit 0 ;;
+  *"-m playwright install chromium"*)
+    echo "${PLAYWRIGHT_DOWNLOAD_HOST:-official}|${PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST:-none}" >> "$BROWSER_LOG"
+    case "$PLAYWRIGHT_DOWNLOAD_HOST|$PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST" in
+      *binaries/playwright*\|*binaries/chrome-for-testing*) exit 1 ;;
+      *binaries/playwright*\|) exit 1 ;;
+      "|") exit 0 ;;
+      *) exit 9 ;;
+    esac ;;
 esac
 exit 0
 """,
@@ -117,9 +125,12 @@ exit 1
         PATH=f"{fake_bin}{os.pathsep}{os.defpath}",
         TERM="dumb",
         MIRROR_LOG=str(mirror_log),
+        BROWSER_LOG=str(browser_log),
         FAKE_VENV_TEMPLATE=str(venv_template),
     )
     env.pop("PIP_INDEX_URL", None)
+    env.pop("PLAYWRIGHT_DOWNLOAD_HOST", None)
+    env.pop("PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST", None)
     result = subprocess.run(
         ["bash", str(repo / "easy-install.sh")],
         cwd=caller,
@@ -135,6 +146,12 @@ exit 1
         "https://mirrors.aliyun.com/pypi/simple",
         "https://pypi.tuna.tsinghua.edu.cn/simple",
     ]
+    assert browser_log.read_text(encoding="utf-8").splitlines() == [
+        "https://cdn.npmmirror.com/binaries/playwright|https://cdn.npmmirror.com/binaries/chrome-for-testing",
+        "https://cdn.npmmirror.com/binaries/playwright|none",
+        "official|none",
+    ]
+    assert "自动回退 Playwright 官方 CDN" in result.stdout
     assert (repo / "venv").is_dir()
     assert not (caller / "venv").exists()
 
@@ -149,6 +166,10 @@ def test_installers_install_the_package_and_default_to_domestic_mirrors():
         assert content.index("mirrors.aliyun.com") < content.index("pypi.tuna.tsinghua.edu.cn")
         assert "https://pypi.org/simple" in content
         assert "https://cdn.npmmirror.com/binaries/playwright" in content
+        assert "https://cdn.npmmirror.com/binaries/chrome-for-testing" in content
+        assert "PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST" in content
+        assert "env -u PLAYWRIGHT_DOWNLOAD_HOST" in content
+        assert "自动回退 Playwright 官方 CDN" in content
         assert "SCRIPT_DIR" in content
 
     for filename in ("easy-install.bat", "quickstart.bat"):
@@ -160,6 +181,10 @@ def test_installers_install_the_package_and_default_to_domestic_mirrors():
         assert content.index("mirrors.aliyun.com") < content.index("pypi.tuna.tsinghua.edu.cn")
         assert "https://pypi.org/simple" in content
         assert "https://cdn.npmmirror.com/binaries/playwright" in content
+        assert "https://cdn.npmmirror.com/binaries/chrome-for-testing" in content
+        assert "PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST" in content
+        assert 'set "PLAYWRIGHT_DOWNLOAD_HOST="' in content
+        assert "自动回退 Playwright 官方 CDN" in content
         assert 'cd /d "%~dp0"' in content
         assert "PYTHON_MAJOR" in content
         assert "VENV_PYTHON_MAJOR" in content

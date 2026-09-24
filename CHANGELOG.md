@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.4] - 2026-09-24
+
+### Fixed
+
+- POSIX and Windows installers now route Playwright 1.58+ Chromium downloads through npmmirror's dedicated Chrome for Testing mirror, while retaining the legacy npmmirror path and official CDN fallbacks.
+- Explicit `PLAYWRIGHT_DOWNLOAD_HOST` and `PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST` overrides remain authoritative.
+- Windows release verification now executes the browser installation path inside `easy-install.bat` before launching Chromium and completing the MCP smoke test.
+- Troubleshooting instructions now explain how to reinstall the browser matching the current Playwright version.
+
+### Verified
+
+- A live three-page Lanhu Axure document returned three PNG image contents plus extracted text over MCP stdio.
+- Full-page captures measured 1920×1080, 1920×1256, and 1920×1080, confirming that pages taller than the viewport remain complete.
+
+See [v1.8.4 release notes](RELEASE_NOTES_v1.8.4.md) for the failure mode and validation evidence.
+
 ## [1.8.3] - 2026-09-20
 
 ### Added

@@ -2,9 +2,12 @@
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-REM 国内镜像优先；自定义 PIP_INDEX_URL 时只使用用户指定的源。
+REM 国内镜像优先；用户显式指定的下载源保持权威。
 set "CUSTOM_PIP_INDEX_URL=%PIP_INDEX_URL%"
-if not defined PLAYWRIGHT_DOWNLOAD_HOST set "PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright"
+set "CUSTOM_PLAYWRIGHT_DOWNLOAD_HOST=%PLAYWRIGHT_DOWNLOAD_HOST%"
+set "CUSTOM_PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=%PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST%"
+set "PLAYWRIGHT_MIRROR=https://cdn.npmmirror.com/binaries/playwright"
+set "PLAYWRIGHT_CHROMIUM_MIRROR=https://cdn.npmmirror.com/binaries/chrome-for-testing"
 chcp 65001 >nul 2>&1  :: 强制切换控制台编码为 UTF-8
 powershell -Command "$OutputEncoding = [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding" >nul 2>&1
 REM 蓝湖 MCP 服务器快速启动脚本（Windows）
@@ -108,7 +111,7 @@ venv\Scripts\python.exe -m pip check
 REM 安装 Playwright 浏览器
 echo.
 echo 正在安装 Playwright 浏览器...
-venv\Scripts\python.exe -m playwright install chromium
+call :install_browser
 if errorlevel 1 (
     echo [ERROR] Chromium 下载失败
     echo 请检查网络后重试，也可通过 PLAYWRIGHT_DOWNLOAD_HOST 指定其他镜像
@@ -218,6 +221,33 @@ if defined str (
 )
 endlocal & set "%~2=%len%"
 goto :eof
+
+:install_browser
+if defined CUSTOM_PLAYWRIGHT_DOWNLOAD_HOST goto install_browser_custom
+if defined CUSTOM_PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST goto install_browser_custom
+set "PLAYWRIGHT_DOWNLOAD_HOST=%PLAYWRIGHT_MIRROR%"
+set "PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=%PLAYWRIGHT_CHROMIUM_MIRROR%"
+echo 正在使用国内 Playwright 镜像（Chrome for Testing 专用路径）
+venv\Scripts\python.exe -m playwright install chromium
+if not errorlevel 1 exit /b 0
+echo [WARN] 新版国内镜像路径不可用，尝试兼容旧版 Playwright 镜像...
+set "PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="
+venv\Scripts\python.exe -m playwright install chromium
+if not errorlevel 1 exit /b 0
+echo [WARN] 国内镜像均不可用，自动回退 Playwright 官方 CDN...
+set "PLAYWRIGHT_DOWNLOAD_HOST="
+set "PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="
+venv\Scripts\python.exe -m playwright install chromium
+if errorlevel 1 exit /b 1
+exit /b 0
+
+:install_browser_custom
+set "PLAYWRIGHT_DOWNLOAD_HOST=%CUSTOM_PLAYWRIGHT_DOWNLOAD_HOST%"
+set "PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=%CUSTOM_PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST%"
+echo 正在使用用户指定的 Playwright 下载源
+venv\Scripts\python.exe -m playwright install chromium
+if errorlevel 1 exit /b 1
+exit /b 0
 
 :install_project
 set "PIP_INDEX_URL=%~1"

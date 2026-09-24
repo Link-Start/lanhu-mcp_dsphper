@@ -14,7 +14,7 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for reading Lanhu design documents, Axure prototypes, UI designs and source assets, with a server-local team message board.
 
-**v1.8.3 adds a real Windows installation, Chromium, CLI, and MCP handshake release gate.** See [the release notes](RELEASE_NOTES_v1.8.3.md).
+**v1.8.4 keeps domestic browser downloads first and falls back to the official Playwright CDN when a Chromium revision has not reached the mirror yet.** See [the release notes](RELEASE_NOTES_v1.8.4.md).
 
 **MCP client integration:**
 

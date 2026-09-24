@@ -47,7 +47,6 @@ jobs:
       DDS_COOKIE: ci-placeholder-not-a-real-cookie
       FEISHU_WEBHOOK_URL: ''
       LANHU_INSTALL_NONINTERACTIVE: '1'
-      LANHU_SKIP_BROWSER_INSTALL: '1'
       PIP_INDEX_URL: https://pypi.org/simple
     steps:
       - uses: actions/checkout@v7

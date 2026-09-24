@@ -29,7 +29,7 @@
 
 一个面向蓝湖设计交付与需求阅读的 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器。由 MCP 提供来源数据和资源，大模型结合画面理解并适配目标工程。
 
-**v1.8.3：Windows 一键安装进入真实 CI 发布门禁。** [版本说明](RELEASE_NOTES_v1.8.3.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
+**v1.8.4：修复 Playwright 国内镜像未同步时需求截图不可用的问题。** [版本说明](RELEASE_NOTES_v1.8.4.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
 
 
 🔥 **核心创新**：
@@ -184,7 +184,7 @@ bash easy-install.sh        # Linux/Mac
 easy-install.bat           # Windows
 ```
 
-> 💡 `easy-install.sh` 会自动安装依赖、引导获取 Cookie 并配置环境。国内用户默认优先使用阿里云 PyPI，并自动回退到清华和官方 PyPI；Chromium 使用 npmmirror；可通过 `PIP_INDEX_URL`、`PLAYWRIGHT_DOWNLOAD_HOST` 覆盖。
+> 💡 `easy-install.sh` 会自动安装依赖、引导获取 Cookie 并配置环境。国内用户默认优先使用阿里云 PyPI，并自动回退到清华和官方 PyPI；Chromium 使用 npmmirror 的 Chrome for Testing 专用镜像，兼容旧版路径并以 Playwright 官方 CDN 兜底；可通过 `PIP_INDEX_URL`、`PLAYWRIGHT_DOWNLOAD_HOST`、`PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST` 覆盖。
 
 <details>
 <summary>或者手动安装（不推荐）</summary>
@@ -875,10 +875,19 @@ A: 重新登录蓝湖网页版，获取新的 Cookie 并更新环境变量或配
 <details>
 <summary><b>Q: 截图失败或显示空白？</b></summary>
 
-A: 确保系统已安装 Playwright 浏览器：
+A: 确保系统已安装与当前 Playwright 版本匹配的 Chromium：
 ```bash
+# Linux / macOS：国内镜像
+PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright \
+PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/chrome-for-testing \
 ./venv/bin/python -m playwright install chromium
+
+# Windows CMD：国内镜像
+set PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
+set PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/chrome-for-testing
+venv\Scripts\python.exe -m playwright install chromium
 ```
+Playwright 1.58+ 的 Chromium 使用 Chrome for Testing 路径，因此不能只设置旧的 `PLAYWRIGHT_DOWNLOAD_HOST`。一键安装脚本会自动配置双源，并兼容旧版 Playwright 和官方 CDN。
 </details>
 
 <details>

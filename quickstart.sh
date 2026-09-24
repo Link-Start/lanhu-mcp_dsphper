@@ -7,9 +7,12 @@ set -e
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# 国内镜像优先；自定义 PIP_INDEX_URL 时只使用用户指定的源。
+# 国内镜像优先；用户显式指定的下载源保持权威。
 CUSTOM_PIP_INDEX_URL="${PIP_INDEX_URL:-}"
-export PLAYWRIGHT_DOWNLOAD_HOST="${PLAYWRIGHT_DOWNLOAD_HOST:-https://cdn.npmmirror.com/binaries/playwright}"
+CUSTOM_PLAYWRIGHT_DOWNLOAD_HOST="${PLAYWRIGHT_DOWNLOAD_HOST:-}"
+CUSTOM_PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="${PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST:-}"
+PLAYWRIGHT_MIRROR="https://cdn.npmmirror.com/binaries/playwright"
+PLAYWRIGHT_CHROMIUM_MIRROR="https://cdn.npmmirror.com/binaries/chrome-for-testing"
 
 echo "🎨 蓝湖 MCP 服务器 - 快速启动"
 echo "=================================="
@@ -84,10 +87,38 @@ if ! install_project; then
 fi
 "$VENV_PYTHON" -m pip check
 
+install_playwright_browser() {
+    if [ -n "$CUSTOM_PLAYWRIGHT_DOWNLOAD_HOST" ] || [ -n "$CUSTOM_PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST" ]; then
+        echo "正在使用用户指定的 Playwright 下载源"
+        local custom_env=()
+        [ -n "$CUSTOM_PLAYWRIGHT_DOWNLOAD_HOST" ] && custom_env+=("PLAYWRIGHT_DOWNLOAD_HOST=$CUSTOM_PLAYWRIGHT_DOWNLOAD_HOST")
+        [ -n "$CUSTOM_PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST" ] && custom_env+=("PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST=$CUSTOM_PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST")
+        env "${custom_env[@]}" "$VENV_PYTHON" -m playwright install chromium
+        return
+    fi
+
+    echo "正在使用国内 Playwright 镜像（Chrome for Testing 专用路径）"
+    if PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_MIRROR" \
+        PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST="$PLAYWRIGHT_CHROMIUM_MIRROR" \
+        "$VENV_PYTHON" -m playwright install chromium; then
+        return 0
+    fi
+
+    echo -e "${YELLOW:-}⚠️  新版国内镜像路径不可用，尝试兼容旧版 Playwright 镜像...${NC:-}"
+    if env -u PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST \
+        PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_MIRROR" \
+        "$VENV_PYTHON" -m playwright install chromium; then
+        return 0
+    fi
+
+    echo -e "${YELLOW:-}⚠️  国内镜像均不可用，自动回退 Playwright 官方 CDN...${NC:-}"
+    env -u PLAYWRIGHT_DOWNLOAD_HOST -u PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST \
+        "$VENV_PYTHON" -m playwright install chromium
+}
 # 安装 Playwright 浏览器
 echo ""
 echo "🌐 正在安装 Playwright 浏览器..."
-if ! "$VENV_PYTHON" -m playwright install chromium; then
+if ! install_playwright_browser; then
     echo "❌ Chromium 下载失败"
     echo "请检查网络后重试；也可通过 PLAYWRIGHT_DOWNLOAD_HOST 指定其他镜像。"
     exit 1
