@@ -98,4 +98,6 @@ async def test_analyze_reuses_download_sitemap_and_selects_render_cost(
         "version_id": "version-1",
         "capture_screenshot": expected_capture,
         "include_design_info": expected_capture,
+        "tile_offset": 0,
+        "tile_limit": server.AXURE_DEFAULT_TILE_LIMIT,
     }]

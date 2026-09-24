@@ -14,7 +14,7 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for reading Lanhu design documents, Axure prototypes, UI designs and source assets, with a server-local team message board.
 
-**v1.8.4 keeps domestic browser downloads first and falls back to the official Playwright CDN when a Chromium revision has not reached the mirror yet.** See [the release notes](RELEASE_NOTES_v1.8.4.md).
+**v1.8.5 preserves the established full Axure screenshot and automatically adds readable overlapping detail tiles for long pages.** See [the release notes](RELEASE_NOTES_v1.8.5.md).
 
 **MCP client integration:**
 
@@ -55,6 +55,7 @@ English | [简体中文](README.md)
   - 🧪 **Tester Perspective**: Test scenarios, test cases, boundary values, validation rules
   - 🚀 **Quick Explorer**: Core function overview, module dependencies, review points
 - **Four-Stage Workflow**: Global scan → Grouped analysis → Reverse validation → Generate deliverables
+- **Long-Page Visual Evidence**: Keep the original full screenshot for compatibility and add overlapping source-resolution detail tiles with page names and source coordinates
 - **Coverage Tracking**: A task-based analysis workflow helps identify omissions; completeness still needs review
 
 ### 🎨 UI Design Support
@@ -501,6 +502,8 @@ https://lanhuapp.com/web/#/item/project/product?tid=xxx&pid=xxx&docId=xxx
 - Tester Perspective: Test plan + Test case list + Field validation table
 - Quick Explorer: Review doc + Module dependency diagram + Discussion points
 
+In `full` mode, long pages retain the original full screenshot and include the first four detail tiles by default. If more tiles remain, call the tool again with the reported `tile_offset`; `tile_limit` is capped at 12 per page. Normal pages and `text_only` do not add screenshots.
+
 ### UI Design Viewing
 
 ```
@@ -556,7 +559,7 @@ Show all knowledge base messages about "testing"
 | `lanhu_resolve_invite_link` | Parse invite link | When user provides share link |
 | `lanhu_list_product_documents` | Discover product documents in a project | Find a PRD/prototype before choosing its pages |
 | `lanhu_get_pages` | Get prototype page list | Must call before analyzing requirements |
-| `lanhu_get_ai_analyze_page_result` | Analyze prototype page content | Extract requirement details |
+| `lanhu_get_ai_analyze_page_result` | Analyze prototype pages; return full images and detail tiles for long pages | Extract requirement details |
 | `lanhu_get_designs` | Get UI design list | Must call before viewing designs |
 | `lanhu_get_ai_analyze_design_result` | Analyze UI designs | View design drafts |
 | `lanhu_get_design_slices` | Get legacy slice URLs and metadata | Inspect available resources without installing files |
@@ -606,7 +609,7 @@ ROLE_MAPPING_RULES = [
 
 ### Cache Control
 
-The cache directory is controlled by `DATA_DIR`. A relative path is anchored to the `.env` directory, or to the source directory when no `.env` exists, so changing the MCP client's working directory does not create a second cache. For requirement URLs containing `versionId`, an intact matching cache returns without first contacting Lanhu. `text_only` extracts text and annotations without screenshots or design-style scans.
+The cache directory is controlled by `DATA_DIR`. A relative path is anchored to the `.env` directory, or to the source directory when no `.env` exists, so changing the MCP client's working directory does not create a second cache. For requirement URLs containing `versionId`, an intact matching cache returns without first contacting Lanhu. `text_only` extracts text and annotations without screenshots or design-style scans. Long-page detail tiles use a separate cache schema; the first v1.8.5 call rebuilds screenshot metadata once, then identical version/tile ranges return from cache.
 
 
 ```bash

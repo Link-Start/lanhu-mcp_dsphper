@@ -15,9 +15,9 @@ from datetime import datetime, timezone, timedelta
 from typing import Annotated, Optional, Union, List, Any
 
 # BEGIN EMBEDDED LANHU_DESIGN (generated; run scripts/embed_lanhu_design.py)
-_EMBEDDED_LANHU_DESIGN_SHA256 = "55f629fb5ae03ec36480b36cf658c2d03e5e5782284f27f82468ede493eb7d90"
-_EMBEDDED_LANHU_DESIGN_ZIP = """UEsDBBQAAAAIAAAAIVx6KYngVgAAAFkAAAAYAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5U1JSCkstKs7Mz0tNUUhJLc5Mz1NI
-LctMSc1LTlVIzEtRSCwuTi0ByuRklqUWVSqk5Rcp+CTmZZQq+DoH6CkpKXFxxceXQUyIj1ewVVAy1LPQM1HiAgBQSwMEFAAAAAgA
+_EMBEDDED_LANHU_DESIGN_SHA256 = "c5879918f51dbdddb40017eb35c821e2c3bc2211d64c8e4f72c70b21e608d98b"
+_EMBEDDED_LANHU_DESIGN_ZIP = """UEsDBBQAAAAIAAAAIVxNQ0vhVgAAAFkAAAAYAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5U1JSCkstKs7Mz0tNUUhJLc5Mz1NI
+LctMSc1LTlVIzEtRSCwuTi0ByuRklqUWVSqk5Rcp+CTmZZQq+DoH6CkpKXFxxceXQUyIj1ewVVAy1LPQM1XiAgBQSwMEFAAAAAgA
 AAAhXNdHRhyMEQAAUjoAABcAAABsYW5odV9kZXNpZ24vaW5zdGFsbC5wea0b/XPbtvV3/RUoe7dSqczYWZpr3Sp3TqKs3hrbZzu7
 ba6PB5GQhZoiVYK0o2b53/feA0ACFCVLvekHWwSB94X3DSgIgtNcVTzLGGcPopQzKVL2C8/nNeNKiYpN6zzNBJM5q+aCJUUq8zvG
 70RefaNYViQ8Y49Fea+WPBHRYHANkz68vWBKlACOLfiKlXXOipzxvAAIOJTMZS4ixk4rxUqhirpMBPt4eTpiJacp1ZznTFZqMJOZ
@@ -456,7 +456,7 @@ r41hjhmOczpXdqOa7pkHbfDd7I/NTF+TVu+7wAgFkv2i6gzp8ISuwe2NEf341FWBdqa7c4MtlMvC8olx
 B3Yx37JKfuKygGJNbFqMb13pPek4DW1lE/O3s9N4ZEePXQamQ4g+ar4nYfmuMjWBfd19gzhwzBcu6hntnMxfVRF8Q+/ZQB986ujB
 3BDM2xo7j6AOxb/uK9TCf8MKKq6wdzIC7JIHS3d5ZhVePjjy1fOuvXq+viTxcK/3Pcxv2KMykz3P0sycejTjFXS/N4zXjA3HFr/f
 GeLS0ZJzEYC8R+8r7WirTswnthqt/79WxfEKP1z9aKvdLQfMbty5xymtvexoLx20TLZwn58M0KKpm+1+/wdQSwECFAMUAAAACAAA
-ACFceimJ4FYAAABZAAAAGAAAAAAAAAAAAAAApAEAAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5UEsBAhQDFAAAAAgAAAAhXNdH
+ACFcTUNL4VYAAABZAAAAGAAAAAAAAAAAAAAApAEAAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5UEsBAhQDFAAAAAgAAAAhXNdH
 RhyMEQAAUjoAABcAAAAAAAAAAAAAAKQBjAAAAGxhbmh1X2Rlc2lnbi9pbnN0YWxsLnB5UEsBAhQDFAAAAAgAAAAhXD6cyKAqGgAA
 11IAABUAAAAAAAAAAAAAAKQBTRIAAGxhbmh1X2Rlc2lnbi9tZWRpYS5weVBLAQIUAxQAAAAIAAAAIVxL7m93cBkAABtgAAAZAAAA
 AAAAAAAAAACkAaosAABsYW5odV9kZXNpZ24vbm9ybWFsaXplLnB5UEsBAhQDFAAAAAgAAAAhXEqan4fNIgAATYAAABcAAAAAAAAA
@@ -584,6 +584,18 @@ HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "30"))
 # 注意：截图使用 full_page=True，会自动截取完整页面，不受此限制
 VIEWPORT_WIDTH = int(os.getenv("VIEWPORT_WIDTH", "1920"))
 VIEWPORT_HEIGHT = int(os.getenv("VIEWPORT_HEIGHT", "1080"))
+
+# Axure visual evidence keeps the established full screenshot and adds readable source-pixel tiles.
+# Keep each detail tile reasonably close to common multimodal image budgets while
+# retaining overlap so arrows, tables and text are not lost at a seam.
+AXURE_SCREENSHOT_CACHE_SCHEMA = 3
+AXURE_TILE_WIDTH = int(os.getenv("AXURE_TILE_WIDTH", "1600"))
+AXURE_TILE_HEIGHT = int(os.getenv("AXURE_TILE_HEIGHT", "1000"))
+AXURE_TILE_OVERLAP = int(os.getenv("AXURE_TILE_OVERLAP", "128"))
+AXURE_TILE_TRIGGER_AREA = int(os.getenv("AXURE_TILE_TRIGGER_AREA", "3200000"))
+AXURE_TILE_TRIGGER_LONG_EDGE = int(os.getenv("AXURE_TILE_TRIGGER_LONG_EDGE", "2400"))
+AXURE_DEFAULT_TILE_LIMIT = int(os.getenv("AXURE_DEFAULT_TILE_LIMIT", "4"))
+AXURE_MAX_TILE_LIMIT = int(os.getenv("AXURE_MAX_TILE_LIMIT", "12"))
 
 # 调试模式
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
@@ -4514,10 +4526,191 @@ def _select_axure_screenshot_clip(metrics: dict, margin: int = 32) -> Optional[d
     return {"x": left, "y": top, "width": right - left, "height": bottom - top}
 
 
+
+def _axure_effective_region(metrics: dict) -> Optional[dict]:
+    """Return the visible Axure source region used by screenshot detail tiles."""
+    if not isinstance(metrics, dict):
+        return None
+    clip = _select_axure_screenshot_clip(metrics)
+    if clip:
+        return clip
+    try:
+        width = float(metrics["documentWidth"])
+        height = float(metrics["documentHeight"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return {"x": 0.0, "y": 0.0, "width": width, "height": height}
+
+
+def _axure_axis_cuts(start: float, length: float, target: int, overlap: int,
+                      rects: List[dict], axis: str) -> List[float]:
+    """Choose stable cuts near whitespace without depending on layer names."""
+    end = start + length
+    single_limit = max(target + overlap, target * 1.28)
+    if length <= single_limit:
+        return [start, end]
+
+    stride = max(256, target - overlap)
+    search_radius = min(192, max(64, overlap * 2))
+    min_span = max(256, target // 2)
+    cuts = [start]
+    nominal = start + stride
+    key0, key1 = (("x", "right") if axis == "x" else ("y", "bottom"))
+
+    while nominal < end - min_span:
+        low = max(cuts[-1] + min_span, nominal - search_radius)
+        high = min(end - min_span, nominal + search_radius)
+        if high <= low:
+            break
+        candidates = [low + step for step in range(0, int(high - low) + 1, 16)]
+        if not candidates or candidates[-1] < high:
+            candidates.append(high)
+
+        def cost(candidate: float) -> tuple:
+            crossings = 0
+            proximity = 0.0
+            for rect in rects:
+                try:
+                    rect_start = float(rect[key0])
+                    rect_end = float(rect[key1])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if rect_start < candidate < rect_end:
+                    crossings += 1
+                    proximity += min(candidate - rect_start, rect_end - candidate)
+            return crossings, proximity, abs(candidate - nominal)
+
+        chosen = min(candidates, key=cost)
+        if chosen <= cuts[-1]:
+            break
+        cuts.append(chosen)
+        nominal = chosen + stride
+
+    if end - cuts[-1] < min_span and len(cuts) > 1:
+        cuts.pop()
+    cuts.append(end)
+    return cuts
+
+
+def _plan_axure_screenshot_tiles(metrics: dict, text_blocks: Optional[List[dict]] = None) -> List[dict]:
+    """Plan row-major source-pixel tiles for pages that would be unreadable as one image."""
+    region = _axure_effective_region(metrics)
+    if not region:
+        return []
+    width, height = float(region["width"]), float(region["height"])
+    if (width * height <= AXURE_TILE_TRIGGER_AREA and
+            max(width, height) <= AXURE_TILE_TRIGGER_LONG_EDGE):
+        return []
+
+    rects = list(metrics.get("contentRects") or [])
+    if not rects:
+        for block in text_blocks or []:
+            bounds = block.get("bounds") or {}
+            try:
+                x, y = float(bounds["x"]), float(bounds["y"])
+                w, h = float(bounds["width"]), float(bounds["height"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            rects.append({"x": x, "y": y, "right": x + w, "bottom": y + h})
+
+    x_cuts = _axure_axis_cuts(float(region["x"]), width, AXURE_TILE_WIDTH,
+                              AXURE_TILE_OVERLAP, rects, "x")
+    y_cuts = _axure_axis_cuts(float(region["y"]), height, AXURE_TILE_HEIGHT,
+                              AXURE_TILE_OVERLAP, rects, "y")
+    if len(x_cuts) == 2 and len(y_cuts) == 2:
+        return []
+
+    half_overlap = AXURE_TILE_OVERLAP / 2
+    tiles = []
+    for row in range(len(y_cuts) - 1):
+        for column in range(len(x_cuts) - 1):
+            left = x_cuts[column] - (half_overlap if column else 0)
+            top = y_cuts[row] - (half_overlap if row else 0)
+            right = x_cuts[column + 1] + (half_overlap if column + 1 < len(x_cuts) - 1 else 0)
+            bottom = y_cuts[row + 1] + (half_overlap if row + 1 < len(y_cuts) - 1 else 0)
+            left = max(float(region["x"]), left)
+            top = max(float(region["y"]), top)
+            right = min(float(region["x"]) + width, right)
+            bottom = min(float(region["y"]) + height, bottom)
+            tile_index = len(tiles)
+            tile = {
+                "tile_id": f"T{tile_index + 1:03d}",
+                "index": tile_index,
+                "row": row,
+                "column": column,
+                "region": {
+                    "x": round(left, 2), "y": round(top, 2),
+                    "width": round(right - left, 2), "height": round(bottom - top, 2),
+                },
+            }
+            block_indexes = []
+            for block_index, block in enumerate(text_blocks or []):
+                bounds = block.get("bounds") or {}
+                try:
+                    bx, by = float(bounds["x"]), float(bounds["y"])
+                    br = bx + float(bounds["width"])
+                    bb = by + float(bounds["height"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if br > left and bx < right and bb > top and by < bottom:
+                    block_indexes.append(block_index)
+            tile["text_block_indexes"] = block_indexes
+            tiles.append(tile)
+    return tiles
+
+
+def _axure_tiles_for_request(metadata: dict, output_path: Path, offset: int, limit: int,
+                              require_files: bool = True) -> Optional[List[dict]]:
+    plan = metadata.get("tile_plan") or []
+    selected = plan[offset:offset + limit]
+    result = []
+    for tile in selected:
+        file_name = tile.get("file_name")
+        if not file_name:
+            return None
+        path = output_path / file_name
+        if not path.exists():
+            if require_files:
+                return None
+            continue
+        result.append({**tile, "path": str(path)})
+    return result
+
+
+async def _capture_axure_region(page, region: dict, scale: float = 1.0) -> bytes:
+    """Capture an off-screen source region without Playwright's viewport edge rounding."""
+    clip = {
+        "x": float(region["x"]),
+        "y": float(region["y"]),
+        "width": float(region["width"]),
+        "height": float(region["height"]),
+        "scale": float(scale),
+    }
+    if clip["width"] <= 0 or clip["height"] <= 0 or clip["scale"] <= 0:
+        raise ValueError(f"Invalid Axure screenshot clip: {clip}")
+    session = await page.context.new_cdp_session(page)
+    try:
+        captured = await session.send("Page.captureScreenshot", {
+            "format": "png",
+            "fromSurface": True,
+            "captureBeyondViewport": True,
+            "clip": clip,
+        })
+        return base64.b64decode(captured["data"])
+    finally:
+        await session.detach()
+
+
+
+
 async def screenshot_page_internal(resource_dir: str, page_names: List[str], output_dir: str,
                                    return_base64: bool = True, version_id: str = None,
                                    capture_screenshot: bool = True,
-                                   include_design_info: bool = True) -> List[dict]:
+                                   include_design_info: bool = True,
+                                   tile_offset: int = 0,
+                                   tile_limit: int = AXURE_DEFAULT_TILE_LIMIT) -> List[dict]:
     """渲染 Axure 页面并提取内容。
 
     ``capture_screenshot=False`` 用于 text_only 扫描：仍通过浏览器取得动态文本和
@@ -4531,6 +4724,8 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    tile_offset = max(0, int(tile_offset or 0))
+    tile_limit = max(1, min(AXURE_MAX_TILE_LIMIT, int(tile_limit or AXURE_DEFAULT_TILE_LIMIT)))
     
     # 缓存元数据文件
     cache_meta_path = output_path / ".screenshot_cache.json"
@@ -4557,11 +4752,20 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
         text_blocks_file = output_path / f"{safe_name}_text_blocks.json"
         screenshot_meta_file = output_path / f"{safe_name}_screenshot.json"
         
-        # text_only 只要求文本与标注缓存；完整模式还要求截图和样式缓存。
-        cache_files_ready = (cached_schema == 2 and text_file.exists() and
+        # text_only 只要求文本与标注缓存；完整模式还要求截图、样式和本次请求的分块缓存。
+        cache_files_ready = (cached_schema == AXURE_SCREENSHOT_CACHE_SCHEMA and text_file.exists() and
                              annotations_file.exists() and text_blocks_file.exists())
+        screenshot_metadata = {}
         if capture_screenshot:
-            cache_files_ready = cache_files_ready and screenshot_file.exists()
+            cache_files_ready = cache_files_ready and screenshot_file.exists() and screenshot_meta_file.exists()
+            if cache_files_ready:
+                try:
+                    screenshot_metadata = json.loads(screenshot_meta_file.read_text(encoding='utf-8'))
+                    cache_files_ready = _axure_tiles_for_request(
+                        screenshot_metadata, output_path, tile_offset, tile_limit
+                    ) is not None
+                except Exception:
+                    cache_files_ready = False
             if include_design_info:
                 cache_files_ready = cache_files_ready and styles_file.exists()
 
@@ -4610,11 +4814,18 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
             if capture_screenshot:
                 cached_result['screenshot_path'] = str(screenshot_file)
                 cached_result['size'] = f"{screenshot_file.stat().st_size / 1024:.1f}KB"
-                if screenshot_meta_file.exists():
-                    try:
-                        cached_result.update(json.loads(screenshot_meta_file.read_text(encoding='utf-8')))
-                    except Exception:
-                        pass
+                cached_result.update(screenshot_metadata)
+                detail_tiles = _axure_tiles_for_request(
+                    screenshot_metadata, output_path, tile_offset, tile_limit
+                ) or []
+                cached_result['detail_tiles'] = detail_tiles
+                cached_result['tile_offset'] = tile_offset
+                cached_result['tile_limit'] = tile_limit
+                cached_result['tile_total'] = len(screenshot_metadata.get('tile_plan') or [])
+                next_offset = tile_offset + len(detail_tiles)
+                cached_result['tile_next_offset'] = (
+                    next_offset if next_offset < cached_result['tile_total'] else None
+                )
             cached_results.append(cached_result)
         else:
             pages_to_render.append(page_name)
@@ -4660,12 +4871,17 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                     continue
 
                 # 本地 Axure 页面可能保留轮询或长期连接，networkidle 会无意义地
-                # 等满 30 秒。先等 DOM，再用有上限的条件等待动态节点出现。
+                # 等满超时。DOM 事件超时后，只要目标文档与 body 已稳定就继续。
                 url = f"http://127.0.0.1:{port}/{html_file}"
-                await page.goto(url, wait_until='domcontentloaded', timeout=15000)
+                try:
+                    await page.goto(url, wait_until='domcontentloaded', timeout=15000)
+                except Exception:
+                    if page.url != url:
+                        raise
+                await page.locator('body').wait_for(state='attached', timeout=8000)
                 try:
                     await page.wait_for_function(
-                        """() => document.readyState === 'complete' && !!document.body && (
+                        """() => !!document.body && (
                             !!window.__lanhuAxurePageData ||
                             !!document.querySelector('[id^=\"u\"], .ax_default, .annnote') ||
                             document.body.innerText.trim().length > 0
@@ -4673,8 +4889,8 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                         timeout=8000,
                     )
                 except Exception:
-                    # 纯视觉页面可能没有文字或映射数据；继续使用当前 DOM。
-                    pass
+                    # 纯视觉页面可能没有文字或映射数据；继续使用稳定的 body。
+                    await page.locator('body').wait_for(state='attached', timeout=3000)
                 await page.wait_for_timeout(250)
 
                 # Extract only rendered text nodes. Each block carries source-page
@@ -4970,19 +5186,50 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                             width: Math.max(...rects.map(r => r.right)) - Math.min(...rects.map(r => r.x)),
                             height: Math.max(...rects.map(r => r.bottom)) - Math.min(...rects.map(r => r.y))
                         } : null;
-                        return {documentWidth, documentHeight, contentBounds};
+                        return {documentWidth, documentHeight, contentBounds, contentRects: rects.slice(0, 5000)};
                     }''')
+                    tile_plan = _plan_axure_screenshot_tiles(page_metrics, page_text_blocks)
+                    for tile in tile_plan:
+                        tile["file_name"] = f"{safe_name}__tile_{tile['index'] + 1:03d}.png"
+
+                    document_size = {"width": page_metrics["documentWidth"],
+                                     "height": page_metrics["documentHeight"]}
                     clip = _select_axure_screenshot_clip(page_metrics)
                     if clip:
+                        # Preserve the established main-screenshot path for compatibility.
                         screenshot_bytes = await page.screenshot(clip=clip)
-                        screenshot_metadata = {"screenshot_mode": "content_crop", "screenshot_region": clip,
-                                               "document_size": {"width": page_metrics["documentWidth"],
-                                                                 "height": page_metrics["documentHeight"]}}
+                        screenshot_metadata = {
+                            "screenshot_mode": "content_crop", "screenshot_region": clip,
+                            "document_size": document_size, "tile_plan": tile_plan,
+                        }
                     else:
                         screenshot_bytes = await page.screenshot(full_page=True)
-                        screenshot_metadata = {"screenshot_mode": "full_page", "screenshot_region": None,
-                                               "document_size": {"width": page_metrics["documentWidth"],
-                                                                 "height": page_metrics["documentHeight"]}}
+                        screenshot_metadata = {
+                            "screenshot_mode": "full_page", "screenshot_region": None,
+                            "document_size": document_size, "tile_plan": tile_plan,
+                        }
+
+                    # Detail tiles are additive evidence. A tile failure must never discard
+                    # the established full screenshot or turn a usable page into an error.
+                    tile_errors = []
+                    for tile in tile_plan[tile_offset:tile_offset + tile_limit]:
+                        try:
+                            await page.evaluate(
+                                "region => window.scrollTo(Math.max(0, region.x), Math.max(0, region.y))",
+                                tile["region"],
+                            )
+                            await page.wait_for_timeout(80)
+                            tile_bytes = await _capture_axure_region(page, tile["region"])
+                            (output_path / tile["file_name"]).write_bytes(tile_bytes)
+                        except Exception as tile_error:
+                            tile_errors.append({
+                                "tile_id": tile["tile_id"],
+                                "error": str(tile_error),
+                            })
+                    if tile_plan:
+                        await page.evaluate("() => window.scrollTo(0, 0)")
+                    if tile_errors:
+                        screenshot_metadata["tile_errors"] = tile_errors
                 if screenshot_bytes is not None:
                     screenshot_path.write_bytes(screenshot_bytes)
                 
@@ -5023,6 +5270,20 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                 if screenshot_bytes is not None:
                     result['screenshot_path'] = str(screenshot_path)
                     result['size'] = f"{len(screenshot_bytes) / 1024:.1f}KB"
+                    detail_tiles = _axure_tiles_for_request(
+                        screenshot_metadata, output_path, tile_offset, tile_limit,
+                        require_files=False,
+                    ) or []
+                    result['detail_tiles'] = detail_tiles
+                    result['tile_offset'] = tile_offset
+                    result['tile_limit'] = tile_limit
+                    result['tile_total'] = len(screenshot_metadata.get('tile_plan') or [])
+                    next_offset = tile_offset + len(detail_tiles)
+                    if screenshot_metadata.get('tile_errors'):
+                        next_offset = tile_offset
+                    result['tile_next_offset'] = (
+                        next_offset if next_offset < result['tile_total'] else None
+                    )
 
                 # 如果需要返回base64
                 if return_base64 and screenshot_bytes is not None:
@@ -5046,7 +5307,7 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
     # 更新缓存元数据
     if version_id:
         cache_meta['version_id'] = version_id
-        cache_meta['schema_version'] = 2
+        cache_meta['schema_version'] = AXURE_SCREENSHOT_CACHE_SCHEMA
         cache_meta['cached_pages'] = page_names
         try:
             with open(cache_meta_path, 'w', encoding='utf-8') as f:
@@ -5872,6 +6133,8 @@ async def lanhu_get_ai_analyze_page_result(
         page_names: Annotated[Union[str, List[str]], "Page name(s) to analyze. Use 'all' for all pages, single name like '退款流程', or list like ['退款流程', '用户中心']. Get exact names from lanhu_get_pages first!"],
         mode: Annotated[str, "Analysis mode: 'text_only' (fast global scan, text only for overview) or 'full' (detailed analysis with images+text). Default: 'full'"] = "full",
         analysis_mode: Annotated[str, "Analysis perspective (MUST be chosen by user after STAGE 1): 'developer' (detailed for coding), 'tester' (test scenarios/validation), 'explorer' (quick overview for review). Default: 'developer'"] = "developer",
+        tile_offset: Annotated[int, "For long Axure pages, start index of readable detail tiles. Default: 0"] = 0,
+        tile_limit: Annotated[int, "Readable detail tiles returned per long page (1-12). Default: 4"] = AXURE_DEFAULT_TILE_LIMIT,
         ctx: Context = None
 ) -> List[Union[str, Image]]:
     """
@@ -5900,8 +6163,9 @@ async def lanhu_get_ai_analyze_page_result(
     
     Returns:
         - mode="text_only": Text content only (for fast global scan)
-        - mode="full": Visual + text + design style info (format determined by analysis_mode)
-          Each page includes [设计样式参考] with:
+        - mode="full": The established full screenshot plus readable overlapping detail tiles
+          for long pages, followed by text and design style info. Use tile_offset/tile_limit
+          to page through more than four detail tiles. Each page includes [设计样式参考] with:
             - 文字颜色: exact text colors used (rgba/rgb values, sorted by frequency)
             - 背景颜色: exact background colors used
             - 字体规格: font-size / font-weight / color combinations
@@ -5980,6 +6244,8 @@ async def lanhu_get_ai_analyze_page_result(
             version_id=version_id,
             capture_screenshot=not is_text_only,
             include_design_info=not is_text_only,
+            tile_offset=tile_offset,
+            tile_limit=tile_limit,
         )
 
         # 构建响应
@@ -6002,6 +6268,29 @@ async def lanhu_get_ai_analyze_page_result(
 
         # Build reverse mapping from filename to display name
         filename_to_display = {p['filename'].replace('.html', ''): p['name'] for p in all_pages}
+
+        # 每张视觉输出都携带页名、类型和源页面坐标，避免多图返回后错配。
+        visual_entries = []
+        if not is_text_only:
+            for page_index, result in enumerate(success_results, 1):
+                display_name = filename_to_display.get(result['page_name'], result['page_name'])
+                if result.get('screenshot_path'):
+                    image_kind = "总览图" if result.get('screenshot_mode') == 'overview' else "完整图"
+                    visual_entries.append({
+                        "page_index": page_index,
+                        "page_name": display_name,
+                        "kind": image_kind,
+                        "path": result['screenshot_path'],
+                        "region": result.get('screenshot_region'),
+                    })
+                for tile in result.get('detail_tiles') or []:
+                    visual_entries.append({
+                        "page_index": page_index,
+                        "page_name": display_name,
+                        "kind": f"细节分块 {tile.get('tile_id', '')}",
+                        "path": tile['path'],
+                        "region": tile.get('region'),
+                    })
 
         # 根据mode决定输出格式
         mode_indicator = "📝 TEXT_ONLY MODE" if is_text_only else "📸 FULL MODE"
@@ -6055,25 +6344,18 @@ async def lanhu_get_ai_analyze_page_result(
             header_text += "\n📝 提醒：STAGE 4 交付物格式（完成所有分组后使用）：\n"
             header_text += mode_prompts['stage4_prompt']
             header_text += "\n" + "=" * 60 + "\n\n"
-        header_text += "📋 Return Format (due to MCP limitations):\n"
-        header_text += "  1️⃣ [ABOVE] All visual outputs displayed in page order (top to bottom)\n"
-        header_text += "  2️⃣ [BELOW] Corresponding document text content (top to bottom)\n\n"
-        header_text += "📌 Image-Text Mapping:\n"
-        if success_results:
-            display_name = filename_to_display.get(success_results[0]['page_name'], success_results[0]['page_name'])
-            header_text += f"  • Image 1 ↔ Page 1 text: {display_name}\n"
-        if len(success_results) > 1:
-            display_name = filename_to_display.get(success_results[1]['page_name'], success_results[1]['page_name'])
-            header_text += f"  • Image 2 ↔ Page 2 text: {display_name}\n"
-        if len(success_results) > 2:
-            display_name = filename_to_display.get(success_results[2]['page_name'], success_results[2]['page_name'])
-            header_text += f"  • Image 3 ↔ Page 3 text: {display_name}\n"
-        if len(success_results) > 3:
-            display_name = filename_to_display.get(success_results[3]['page_name'], success_results[3]['page_name'])
-            header_text += f"  • Image 4 ↔ Page 4 text: {display_name}\n"
-        if len(success_results) > 4:
-            header_text += f"  • ... Total {len(success_results)} pages, and so on\n"
-        header_text += "\n💡 Please match visual outputs above with text below to understand each page's requirements\n"
+        header_text += "📋 Return Format:\n"
+        if is_text_only:
+            header_text += "  • Extracted visible text follows in page order; no images are returned in this mode\n"
+        else:
+            header_text += "  1️⃣ Each visual is preceded by its page name, image type, and source coordinates\n"
+            header_text += "  2️⃣ Long pages keep the established full screenshot and add overlapping source-resolution detail tiles\n"
+            header_text += "  3️⃣ Corresponding extracted text follows the visual section\n\n"
+            header_text += f"📌 Visual outputs in this response: {len(visual_entries)}\n"
+            for image_index, entry in enumerate(visual_entries, 1):
+                header_text += (f"  • Image {image_index}: Page {entry['page_index']} {entry['page_name']} "
+                                f"— {entry['kind']}\n")
+            header_text += "\n💡 Use the full screenshot for structure and the detail tiles for readable text and controls\n"
         header_text += "=" * 60 + "\n"
         
         # 如果是首次查看完整文档（TEXT_ONLY模式），添加STAGE1的工作指引
@@ -6106,12 +6388,21 @@ async def lanhu_get_ai_analyze_page_result(
         
         content.append(header_text)
 
-        # 根据mode决定是否添加截图
+        # FULL模式：图像前插入明确标签；FastMCP 会按当前顺序返回文本与图片内容块。
         if not is_text_only:
-            # FULL模式：先添加所有截图
-            for r in success_results:
-                if 'screenshot_path' in r:
-                    content.append(Image(path=r['screenshot_path']))
+            for image_index, entry in enumerate(visual_entries, 1):
+                region = entry.get('region') or {}
+                coordinate_text = ""
+                if region:
+                    coordinate_text = (
+                        f" | source x={region.get('x')} y={region.get('y')} "
+                        f"w={region.get('width')} h={region.get('height')}"
+                    )
+                content.append(
+                    f"🖼️ Image {image_index} | Page {entry['page_index']}: {entry['page_name']} "
+                    f"| {entry['kind']}{coordinate_text}"
+                )
+                content.append(Image(path=entry['path']))
 
         # Add all text content (格式根据mode不同)
         if is_text_only:
@@ -6145,6 +6436,15 @@ async def lanhu_get_ai_analyze_page_result(
                 document_size = r.get('document_size') or {}
                 page_text += (f"[截图范围] 已从 {document_size.get('width', '?')}×{document_size.get('height', '?')} 画布裁剪可见内容："
                               f"x={region['x']} y={region['y']} w={region['width']} h={region['height']}\n")
+            if r.get('tile_total'):
+                returned_tiles = r.get('detail_tiles') or []
+                page_text += (f"[细节分块] 本页共 {r['tile_total']} 块，本次返回 "
+                              f"{len(returned_tiles)} 块（offset={r.get('tile_offset', 0)}）。\n")
+                if r.get('tile_next_offset') is not None:
+                    page_text += (f"[继续读取] 再次调用本工具并设置 tile_offset={r['tile_next_offset']}。\n")
+            if r.get('tile_errors'):
+                failed_ids = ', '.join(item.get('tile_id', '?') for item in r['tile_errors'])
+                page_text += f"[分块降级] {failed_ids} 生成失败；完整截图仍可用。\n"
             if 'page_text' in r and r['page_text']:
                 page_text += r['page_text'] + "\n"
             else:
@@ -7497,7 +7797,7 @@ except ModuleNotFoundError as exc:
     if missing_name != "PIL" and missing_name != "lanhu_design" and not missing_name.startswith("lanhu_design."):
         raise
 
-    __version__ = "1.8.4"
+    __version__ = "1.8.5"
     DesignService = None
 
     class DesignError(Exception):

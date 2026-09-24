@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.5] - 2026-09-24
+
+### Added
+
+- Long Axure pages now keep the established full screenshot and add overlapping source-resolution detail tiles with stable tile IDs, page coordinates, and text-block mappings.
+- `lanhu_get_ai_analyze_page_result` accepts `tile_offset` and `tile_limit` so callers can page through large documents without returning every tile at once.
+
+### Fixed
+
+- Off-screen tiles use Chrome DevTools `captureBeyondViewport`, including a bounded scroll warm-up for lazy page content and bottom-edge clips that Playwright could reject after pixel rounding.
+- Detail-tile failures degrade to the existing full screenshot instead of failing the requirement page.
+- Image labels are interleaved with MCP image content, preventing page-to-image mapping errors when one page produces several images.
+- Local Axure navigation tolerates a delayed `DOMContentLoaded` event after the target document and body are already usable.
+
+### Compatibility
+
+- Normal pages, `text_only`, and the main `screenshot_path` keep their previous behavior. Screenshot cache schema 3 rebuilds metadata once after upgrade.
+
+### Verified
+
+- All 211 offline tests pass.
+- On an authorized live long page, the v1.8.4 and v1.8.5 main PNGs were both 1920×3683 and pixel-identical; v1.8.5 additionally returned four readable PNG tiles through FastMCP.
+- In that sample, local cold rendering changed from 2.495 seconds to 2.934 seconds (+0.439 seconds), while the cached public MCP call returned five PNG contents in 0.752 seconds.
+- A forced DevTools tile failure still returned a successful full-page PNG and explicit tile diagnostics.
+
+See [v1.8.5 release notes](RELEASE_NOTES_v1.8.5.md) for the compatibility contract and validation details.
+
 ## [1.8.4] - 2026-09-24
 
 ### Fixed

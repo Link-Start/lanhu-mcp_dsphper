@@ -29,7 +29,7 @@
 
 一个面向蓝湖设计交付与需求阅读的 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器。由 MCP 提供来源数据和资源，大模型结合画面理解并适配目标工程。
 
-**v1.8.4：修复 Playwright 国内镜像未同步时需求截图不可用的问题。** [版本说明](RELEASE_NOTES_v1.8.4.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
+**v1.8.5：长需求页保留原完整截图，并自动附加可读的重叠细节分块。** [版本说明](RELEASE_NOTES_v1.8.5.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
 
 
 🔥 **核心创新**：
@@ -84,6 +84,7 @@
   - 🧪 **测试视角**：测试场景、用例、边界值、校验规则
   - 🚀 **快速探索**：核心功能概览、模块依赖、评审要点
 - **四阶段工作流**：全局扫描 → 分组分析 → 反向验证 → 生成交付物
+- **长页视觉证据**：完整截图保持原画质与兼容性；超长或超大页面额外返回带重叠区域的原清晰度分块，并标注页名和源坐标。
 - **核对流程**：通过目录和来源信息帮助检查遗漏，不把流程提示当成准确率保证。
 
 ### 🎨 UI设计支持
@@ -388,6 +389,8 @@ https://lanhuapp.com/web/#/item/project/product?tid=xxx&pid=xxx&docId=xxx
 - 测试视角：测试计划 + 测试用例清单 + 字段校验表
 - 快速探索：评审文档 + 模块依赖图 + 讨论要点
 
+`full` 模式遇到长页时会保留原完整截图，并默认附加前 4 张细节分块。若返回信息提示仍有后续分块，再使用 `tile_offset` 继续读取；`tile_limit` 每页最多为 12。普通页面和 `text_only` 模式不增加截图。
+
 ### UI 设计稿查看
 
 ```
@@ -433,7 +436,7 @@ AI 会自动：
 | `lanhu_resolve_invite_link` | 解析邀请链接 | 用户提供分享链接时 |
 | `lanhu_list_product_documents` | 获取项目产品文档清单 | 定位原型或需求文档 |
 | `lanhu_get_pages` | 获取原型页面列表 | 分析需求文档前必调用 |
-| `lanhu_get_ai_analyze_page_result` | 分析原型页面内容 | 提取需求细节 |
+| `lanhu_get_ai_analyze_page_result` | 分析原型页面内容，长页返回完整图与细节分块 | 提取需求细节 |
 | `lanhu_get_designs` | 获取UI设计图列表 | 查看设计稿前必调用 |
 | `lanhu_get_design_overview` | 固定版本，返回设计图与节点索引 | 按稳定ID读取设计 |
 | `lanhu_inspect_design_region` | 局部裁图、编号、样式与资源ID | 大模型结合视觉定位元素 |
@@ -838,7 +841,7 @@ ROLE_MAPPING_RULES = [
 
 ### 缓存控制
 
-缓存目录由环境变量 `DATA_DIR` 控制。相对路径固定相对于 `.env` 所在目录；未使用 `.env` 时固定相对于源码目录，不会随 Cursor、Claude Code 等客户端的启动目录变化。带 `versionId` 的需求文档在版本和文件完整性匹配时可直接离线命中缓存，不再先等待蓝湖接口。`text_only` 模式只提取文字和标注，不生成截图或扫描设计样式。
+缓存目录由环境变量 `DATA_DIR` 控制。相对路径固定相对于 `.env` 所在目录；未使用 `.env` 时固定相对于源码目录，不会随 Cursor、Claude Code 等客户端的启动目录变化。带 `versionId` 的需求文档在版本和文件完整性匹配时可直接离线命中缓存，不再先等待蓝湖接口。`text_only` 模式只提取文字和标注，不生成截图或扫描设计样式。长页细节分块使用独立缓存；首次升级到 v1.8.5 会重建一次截图元数据，后续相同版本与分块范围直接命中缓存。
 
 
 ```bash
