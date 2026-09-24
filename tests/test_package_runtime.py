@@ -192,3 +192,46 @@ print('single-file requirement server import ok')
     )
     assert result.returncode == 0, result.stderr
     assert "single-file requirement server import ok" in result.stdout
+
+
+def test_embedded_design_package_makes_main_server_a_full_single_file(tmp_path):
+    import os
+    import shutil
+    import subprocess
+    import sys
+
+    source = Path(__file__).parents[1] / "lanhu_mcp_server.py"
+    standalone = tmp_path / "lanhu_mcp_server.py"
+    shutil.copy2(source, standalone)
+    probe = tmp_path / "probe.py"
+    probe.write_text(
+        """
+import os
+import runpy
+os.environ['LANHU_FORCE_EMBEDDED_DESIGN'] = '1'
+namespace = runpy.run_path(%r, run_name='lanhu_standalone')
+assert namespace['_design_service'] is not None
+import lanhu_design
+assert '.zip/lanhu_design/' in lanhu_design.__file__.replace('\\\\', '/')
+print(namespace['__version__'])
+""" % str(standalone),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, str(probe)], cwd=tmp_path, capture_output=True, text=True,
+        timeout=30, env={**os.environ, "LANHU_FORCE_EMBEDDED_DESIGN": "1"},
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().endswith("1.8.4")
+
+
+def test_embedded_design_payload_matches_modular_sources():
+    import subprocess
+    import sys
+
+    root = Path(__file__).parents[1]
+    result = subprocess.run(
+        [sys.executable, str(root / "scripts" / "embed_lanhu_design.py"), "--check"],
+        cwd=root, capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout

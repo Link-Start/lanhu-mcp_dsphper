@@ -223,7 +223,7 @@ async def test_hidden_ancestor_and_numeric_dds_ids_are_respected(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_nonzero_canvas_origin_fails_explicitly_instead_of_wrong_crop(tmp_path):
+async def test_unverified_nonfigma_origin_allows_read_only_overview_but_blocks_export(tmp_path):
     service = FakeDesignService(tmp_path)
     original = service.fetch_json
     async def fetch(url):
@@ -232,9 +232,39 @@ async def test_nonzero_canvas_origin_fails_explicitly_instead_of_wrong_crop(tmp_
             value["info"][0]["left"] = 1000
         return value
     service.fetch_json = fetch
-    with pytest.raises(DesignError) as error:
-        await service.prepare(URL)
-    assert error.value.code == "UnsupportedCoordinates"
+    prepared = await service.prepare(URL)
+    assert prepared["coordinate_mapping"]["verified"] is False
+    overview = service.query(prepared["snapshot_id"], annotate=False)
+    assert overview["status"] == "complete"
+    with pytest.raises(DesignError) as detail:
+        service.query(prepared["snapshot_id"], node_ids=["button"])
+    assert detail.value.code == "CoordinateMappingUnverified"
+    with pytest.raises(DesignError) as export:
+        await service.export(prepared["snapshot_id"])
+    assert export.value.code == "CoordinateMappingUnverified"
+
+
+@pytest.mark.asyncio
+async def test_figma_nonzero_origin_supports_overview_inspection_and_export(tmp_path):
+    class FigmaService(FakeDesignService):
+        async def fetch_json(self, url):
+            if url.endswith(".json") and not url.endswith("dds.json"):
+                return {"meta": {"host": {"name": "figma"}}, "artboard": {
+                    "id": "board", "frame": {"left": 11898, "top": -792, "width": 100, "height": 100},
+                    "layers": [{"id": "button", "hasExportImage": True,
+                                "frame": {"left": 10, "top": 20, "width": 40, "height": 30},
+                                "image": {"imageUrl": "https://source/asset.png"}}],
+                }}
+            return await super().fetch_json(url)
+    service = FigmaService(tmp_path)
+    prepared = await service.prepare(URL)
+    assert prepared["coordinate_mapping"]["verified"] is True
+    sid = prepared["snapshot_id"]
+    region = service.query(sid, node_ids=["button"])
+    assert region["nodes"][0]["bounds"] == {"x": 10, "y": 20, "width": 40, "height": 30}
+    assert region["nodes"][0]["source_bounds"] == region["nodes"][0]["bounds"]
+    exported = await service.export(sid)
+    assert exported["status"] == "complete"
 
 
 @pytest.mark.asyncio
@@ -245,7 +275,7 @@ async def test_changed_normalizer_output_does_not_reuse_old_derived_snapshot(tmp
     normalize = module.normalize_design
     def improved(raw):
         result = normalize(raw)
-        result["schema_version"] = 2
+        result["schema_version"] = 999
         return result
     monkeypatch.setattr(module, "normalize_design", improved)
     second = await service.prepare(URL)

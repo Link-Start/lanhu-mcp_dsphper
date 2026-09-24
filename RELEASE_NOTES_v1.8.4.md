@@ -9,12 +9,18 @@ The requirement tools had several latent costs that were not covered by the rele
 v1.8.4 changes that behavior:
 
 - `text_only` extracts text and annotations without scanning design styles or taking screenshots.
-- Replacing only `lanhu_mcp_server.py` no longer crashes when `lanhu_design` is absent; requirement tools continue to work while advanced design tools report that the full package is required.
+- `lanhu_mcp_server.py` embeds the project-owned `lanhu_design` implementation, so historical single-file deployments can use the full tool set without copying a sidecar package directory. If an optional third-party design dependency is absent, requirement tools still start.
 - Axure rendering waits for bounded DOM/page readiness instead of `networkidle` and the fixed delay.
 - One fetched sitemap is reused for download and analysis.
 - A matching versioned cache can return without any Lanhu request.
 - Relative `DATA_DIR` values resolve against the `.env` directory, or the source directory when no `.env` exists.
 - Cache metadata now stores the page list so later versioned calls can be fully offline.
+- Axure text is extracted from rendered text ranges only and includes each block's source-page bounds; hidden and unrendered annotation content is excluded from requirement prose.
+- Sparse canvases larger than 4096 pixels are cropped to visible content when the content occupies less than 65% of the document, and the returned text records the crop mapping.
+
+## Design coordinate fix
+
+Figma imports may place the top-level artboard at an absolute coordinate such as `(11898, -792)` while child frames are already local to the board. v1.8.4 verifies each candidate against the reference canvas, normalizes the artboard and absolute children, retains original `source_bounds`, and records the mapping provenance. Verified snapshots support overview, region inspection, and asset export. Sources that remain unverified allow only an unannotated full overview; region inspection and export return `CoordinateMappingUnverified`.
 
 Existing caches without the stored page list perform one normal request to upgrade their metadata. Later calls use the offline fast path.
 
@@ -35,8 +41,8 @@ A live three-page Lanhu Axure document was measured through the same requirement
 | v1.8.4 MCP text-only warm call | 0.135 s |
 | v1.8.4 MCP full warm call | 0.136 s |
 
-The full MCP response still contained three PNG images and extracted text. Captures measured 1920×1080, 1920×1256, and 1920×1080, confirming full-page capture.
+The full MCP response still contained three PNG images and extracted text. Ordinary captures measured 1920×1080, 1920×1256, and 1920×1080. A synthetic 20000×20000 Axure canvas verified that hidden text is excluded and the image is cropped below 2000×2500 around visible content.
 
-Regression tests verify that exact-version caches make no network request, analysis does not request the sitemap twice, and text-only mode does not request screenshots or design styles. Package, source installer, browser launch, and MCP stdio checks remain part of release validation.
+Regression tests verify exact-version no-network cache hits, one sitemap request per analysis, screenshot-free text-only mode, embedded single-file startup, Figma mixed-origin normalization, safe refusal of unverified exports, hidden Axure text filtering, and sparse-canvas cropping. Package, source installer, browser launch, and MCP stdio checks remain part of release validation.
 
 No real account Cookie is included in the repository, tests, CI configuration, or release artifacts.

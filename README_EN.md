@@ -127,6 +127,10 @@ With `uv`, create the environment first: `uv venv venv --python 3.13`, then run 
 
 For an existing source checkout, upgrade dependencies with `python -m pip install -U -r requirements.txt` and reinstall the package with `python -m pip install -e .`. Restart the server and reconnect the MCP client so it discovers all 16 tools. Docker users should rebuild the image; restarting an old image does not load the new package or dependencies.
 
+### Single-file deployment upgrades
+
+`lanhu_mcp_server.py` embeds the project's own `lanhu_design` implementation. In an environment where the declared third-party dependencies are installed, replacing this one file provides both requirement-document and design tools; copying a separate `lanhu_design/` directory is no longer required. A full repository, wheel, or Docker installation remains recommended for dependency upgrades.
+
 ### Configuration
 
 1. **Set Lanhu Cookie** (Required)

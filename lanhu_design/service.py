@@ -224,8 +224,6 @@ class DesignService:
         raw = await self.fetch_json(version["json_url"])
         normalized = normalize_design(raw)
         canvas = normalized["canvas"]
-        if any(g.get("code") == "nonzero_canvas_origin_unverified" for g in normalized["gaps"]):
-            raise DesignError("UnsupportedCoordinates", "This source has a nonzero canvas origin whose mapping is not verified.")
         if not canvas.get("width") or not canvas.get("height"):
             raise DesignError("UnsupportedCoordinates", "Raw source does not provide a reliable canvas size.")
         reference_url = version.get("url")
@@ -250,7 +248,7 @@ class DesignService:
         ratio_error = abs((width / height) / (canvas["width"] / canvas["height"]) - 1)
         if ratio_error > 0.01 or original_ratio_error > 0.01:
             raise DesignError("CoordinateMismatch", "Reference and source canvas aspect ratios do not match.")
-        snapshot_id = _digest({"schema": 2, "project": ref["project_id"], "team": ref["team_id"],
+        snapshot_id = _digest({"schema": 3, "project": ref["project_id"], "team": ref["team_id"],
                                "design": ref["design_id"], "version": version["id"],
                                "raw_hash": _digest(raw), "normalized_hash": _digest(normalized),
                                "image_hash": hashlib.sha256(reference).hexdigest(), "original_hash": original_hash})[:32]
@@ -268,7 +266,7 @@ class DesignService:
                         dds_gap = "No DDS layout available for this exact version."
                 except (DesignError, httpx.HTTPError):
                     dds_gap = "DDS unavailable for this exact version; raw nodes remain available."
-                snapshot = {**normalized, "schema_version": "2", "snapshot_id": snapshot_id, "project_id": ref["project_id"],
+                snapshot = {**normalized, "schema_version": "3", "snapshot_id": snapshot_id, "project_id": ref["project_id"],
                             "design_id": ref["design_id"], "design_name": info.get("name", ""),
                             "resolved_version": version["id"], "version_label": version.get("version_info"),
                             "reference_size": {"width": width, "height": height},
@@ -289,7 +287,7 @@ class DesignService:
         return {"status": "complete", "snapshot_id": snapshot_id, "design_id": ref["design_id"],
                 "design_name": snapshot["design_name"], "requested_version": requested or "latest",
                 "resolved_version": snapshot["resolved_version"], "source_type": snapshot["source_type"],
-                "canvas": canvas, "coordinate_space": "source_canvas", "reference_size": snapshot["reference_size"],
+                "canvas": canvas, "coordinate_space": "source_canvas", "coordinate_mapping": snapshot.get("coordinate_mapping", {"verified": True, "strategy": "identity"}), "reference_size": snapshot["reference_size"],
                 "original_reference_size": original_size, "preview_downsampled": preview_downsampled,
                 "scale_metadata": snapshot.get("scale_metadata", {}),
                 "font_requirements": _font_requirements(snapshot["nodes"]),
@@ -297,6 +295,7 @@ class DesignService:
                     kind: sum(a["kind"] == kind for a in snapshot["assets"])
                     for kind in sorted({a["kind"] for a in snapshot["assets"]})},
                 "capabilities": {"raw_nodes": True, "dds_layout": snapshot["dds_layout"] is not None,
+                                 "coordinate_mapping_verified": snapshot.get("coordinate_mapping", {}).get("verified", True),
                                  "semantic_components": False},
                 "gaps": snapshot["gaps"] + ([snapshot["dds_gap"]] if snapshot["dds_gap"] else [])}
 
@@ -306,6 +305,12 @@ class DesignService:
         if not 1 <= limit <= 60 or offset < 0:
             raise DesignError("InvalidPagination", "Use offset >= 0 and limit between 1 and 60.")
         snapshot = self.load(snapshot_id)
+        coordinate_mapping = snapshot.get("coordinate_mapping", {"verified": True, "strategy": "identity"})
+        if not coordinate_mapping.get("verified", True) and (region is not None or node_ids or annotate):
+            raise DesignError(
+                "CoordinateMappingUnverified",
+                "Only an unannotated full overview is available until this source coordinate mapping is verified.",
+            )
         all_nodes = {n["node_id"]: n for n in snapshot["nodes"]}
         for node in all_nodes.values():
             visibility = node.get("source_visible")
@@ -398,7 +403,8 @@ class DesignService:
                 collect_dds(child)
         collect_dds(snapshot.get("dds_layout"))
         return {"status": "complete", "snapshot_id": snapshot_id, "resolved_version": snapshot["resolved_version"],
-                "coordinate_space": "source_canvas", "canvas": snapshot["canvas"], **visual,
+                "coordinate_space": "source_canvas", "coordinate_mapping": coordinate_mapping,
+                "canvas": snapshot["canvas"], **visual,
                 "visual_source": visual_mode, "original_reference_size": snapshot.get("original_reference_size", snapshot["reference_size"]),
                 "font_requirements": _font_requirements(selected),
                 "scale_metadata": snapshot.get("scale_metadata", {}),
@@ -459,6 +465,11 @@ class DesignService:
     async def export(self, snapshot_id: str, asset_ids: list[str] | None = None,
                      kind: str = "exported_asset", target_dpr: float = 2, format_preference: str = "original") -> dict:
         snapshot = self.load(snapshot_id)
+        if not snapshot.get("coordinate_mapping", {}).get("verified", True):
+            raise DesignError(
+                "CoordinateMappingUnverified",
+                "Asset export requires a verified mapping between source coordinates and the reference image.",
+            )
         assets = snapshot["assets"]
         if kind not in {"exported_asset", "render_fallback", "image_fill", "all"}:
             raise DesignError("InvalidAssetKind", "Select exported_asset, render_fallback, image_fill or all.")

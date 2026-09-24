@@ -229,20 +229,47 @@ def test_unsupported_structure_and_invalid_input_are_explicit():
         normalize_design([])
 
 
-@pytest.mark.parametrize("raw", [
-    {"meta": {"host": {"name": "figma"}}, "artboard": {
+def test_figma_nonzero_canvas_origin_normalizes_absolute_children():
+    raw = {"meta": {"host": {"name": "figma"}}, "artboard": {
         "id": "board", "frame": {"x": 1000, "y": 2000, "width": 100, "height": 200},
         "layers": [{"id": "child", "frame": {"x": 1010, "y": 2020, "width": 20, "height": 30}}],
-    }},
-    {"type": "ps", "board": {
+    }}
+    result = normalize_design(raw)
+    nodes = _nodes(result)
+    assert result["canvas_origin"] == {"x": 1000, "y": 2000}
+    assert result["coordinate_mapping"]["verified"] is True
+    assert result["coordinate_mapping"]["translation"] == {"x": -1000, "y": -2000}
+    assert "nonzero_canvas_origin_normalized" in _codes(result)
+    assert nodes["board"]["source_bounds"]["x"] == 1000
+    assert nodes["board"]["bounds"] == {"x": 0, "y": 0, "width": 100, "height": 200}
+    assert nodes["child"]["source_bounds"]["x"] == 1010
+    assert nodes["child"]["bounds"] == {"x": 10, "y": 20, "width": 20, "height": 30}
+
+
+def test_figma_import_with_absolute_artboard_and_local_children_keeps_children_local():
+    raw = {"meta": {"host": {"name": "figma", "version": "1.0.0"}}, "artboard": {
+        "id": "board", "frame": {"left": 11898, "top": -792, "width": 375, "height": 1274},
+        "layers": [{"id": "child", "hasExportImage": True,
+                    "frame": {"left": 0, "top": 0, "width": 120, "height": 80},
+                    "image": {"imageUrl": "https://cdn.example.test/slice.png"}}],
+    }}
+    result = normalize_design(raw)
+    nodes = _nodes(result)
+    assert result["coordinate_mapping"]["verified"] is True
+    assert nodes["board"]["bounds"]["x"] == 0
+    assert nodes["board"]["source_bounds"]["x"] == 11898
+    assert nodes["child"]["bounds"] == {"x": 0, "y": 0, "width": 120, "height": 80}
+    assert result["assets"][0]["render_bounds"] == nodes["child"]["bounds"]
+
+
+def test_non_figma_nonzero_origin_remains_explicitly_unverified():
+    raw = {"type": "ps", "board": {
         "id": "board", "left": 1000, "top": 2000, "width": 100, "height": 200,
         "layers": [{"id": "child", "left": 1010, "top": 2020, "width": 20, "height": 30}],
-    }},
-])
-def test_nonzero_canvas_origin_is_explicit_without_translating_nodes(raw):
+    }}
     result = normalize_design(raw)
     assert result["canvas_origin"] == {"x": 1000, "y": 2000}
-    assert result["canvas"] == {"width": 100, "height": 200}
+    assert result["coordinate_mapping"]["verified"] is False
     assert "nonzero_canvas_origin_unverified" in _codes(result)
     assert _nodes(result)["child"]["bounds"] == {"x": 1010, "y": 2020, "width": 20, "height": 30}
 

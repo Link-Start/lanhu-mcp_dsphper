@@ -12,8 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Requirement `text_only` analysis no longer scans design styles or captures full-page screenshots.
-- Historical single-file deployments no longer crash when the optional `lanhu_design` package directory is absent; requirement tools remain available and design tools return an explicit installation error.
+- `lanhu_mcp_server.py` now embeds the project-owned `lanhu_design` package, restoring full single-file deployment without a sidecar source directory; missing optional third-party design dependencies no longer crash requirement tools.
 - Axure rendering uses bounded DOM/page readiness instead of waiting for `networkidle` plus a fixed two-second delay on every page.
+- Axure text extraction now returns only rendered text blocks with source-page bounds; hidden/unrendered annotations are excluded from requirement prose.
+- Very large sparse Axure canvases are cropped to visible content with the crop region reported to the caller.
+- Figma imports with absolute nonzero artboard origins normalize mixed absolute/local layer coordinates while retaining original bounds; unverified sources are read-only and cannot export.
 - Requirement analysis reuses the downloaded sitemap instead of requesting it twice.
 - Matching versioned requirement caches can return without contacting Lanhu; cache metadata now persists the page list needed for the offline fast path.
 - Relative `DATA_DIR` values resolve against the `.env` or source directory, so cache location no longer changes with the MCP client's working directory.
@@ -23,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A live three-page v1.8.3 cold render took 10.118 seconds; the corrected v1.8.4 internal full render took 2.565 seconds.
 - Real MCP stdio warm calls completed in 0.135–0.136 seconds and returned the expected text and full-page PNG contents.
-- Regression coverage enforces no-network exact-version cache hits, one sitemap request per analysis, and screenshot-free text-only mode.
+- Regression coverage enforces no-network exact-version cache hits, one sitemap request per analysis, screenshot-free text-only mode, hidden Axure text filtering, sparse-canvas cropping, Figma nonzero-origin mapping, and full embedded single-file startup.
 - Windows release verification installs and launches Chromium before completing the MCP smoke test.
 
 See [v1.8.4 release notes](RELEASE_NOTES_v1.8.4.md) for the failure analysis and validation evidence.

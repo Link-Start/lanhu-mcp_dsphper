@@ -167,6 +167,8 @@ docker compose up -d --build
 
 Windows 用户可用 `copy .env.example .env` 创建配置文件。旧版 Docker Compose 可将 `docker compose` 替换为 `docker-compose`。
 
+**已有单文件部署升级：** `lanhu_mcp_server.py` 已内嵌项目自带的 `lanhu_design` 实现。在依赖已安装的环境中，只替换这一个文件即可获得完整需求文档与设计稿工具；不再需要额外复制 `lanhu_design/` 目录。正式安装仍推荐使用完整仓库、wheel 或 Docker，以便同步依赖。
+
 📖 详细文档：[Docker 部署指南](DEPLOY.md)
 
 **2.2 源码运行**

@@ -208,9 +208,6 @@ def normalize_design(raw: dict) -> dict:
         if canvas_bounds:
             width, height = canvas_bounds["width"], canvas_bounds["height"]
             canvas_origin = {"x": canvas_bounds["x"], "y": canvas_bounds["y"]}
-            if canvas_origin["x"] != 0 or canvas_origin["y"] != 0:
-                gap("nonzero_canvas_origin_unverified", canvas_origin=canvas_origin.copy(),
-                    message="Nonzero source canvas origin requires verified image mapping; no translation was applied.")
         else:
             for value in (canvas_layer.get("frame"), canvas_layer.get("realFrame"), canvas_layer):
                 if isinstance(value, dict):
@@ -265,8 +262,10 @@ def normalize_design(raw: dict) -> dict:
             "source_order": order,
             "name": layer.get("name") if isinstance(layer.get("name"), str) else "",
             "node_type": layer.get("type") or layer.get("ddsType") or layer.get("layerType") or "unknown",
-            "bounds": bounds,
+            "bounds": copy.deepcopy(bounds),
+            "source_bounds": copy.deepcopy(bounds),
             "bounds_source_field": bounds_field,
+            "bounds_coordinate_mode": "source",
             "source_visible": _visibility(layer),
             "text": _text(layer),
             "raw_style": copy.deepcopy({key: value for key, value in layer.items() if key not in structural}),
@@ -320,6 +319,108 @@ def normalize_design(raw: dict) -> dict:
             current = by_id[current]["parent_id"]
         visited.update(chain)
 
+    # Figma imports may keep the top-level artboard at its absolute Figma canvas
+    # position while nested layer frames are already board-local. Normalize both
+    # representations to the reference image's 0,0 canvas and retain source_bounds.
+    coordinate_mapping = {
+        "verified": True,
+        "strategy": "identity",
+        "source_origin": copy.deepcopy(canvas_origin),
+        "translation": {"x": 0, "y": 0},
+    }
+    if (canvas_origin and (canvas_origin["x"] != 0 or canvas_origin["y"] != 0)):
+        coordinate_mapping.update({
+            "verified": False,
+            "strategy": "unverified_nonzero_origin",
+            "translation": {"x": -canvas_origin["x"], "y": -canvas_origin["y"]},
+        })
+        if source_type == "figma" and width is not None and height is not None and width > 0 and height > 0:
+            def fit(rect):
+                if rect is None:
+                    return 0.0
+                x1, y1 = max(0, rect["x"]), max(0, rect["y"])
+                x2 = min(width, rect["x"] + rect["width"])
+                y2 = min(height, rect["y"] + rect["height"])
+                if rect["width"] == 0 or rect["height"] == 0:
+                    return 1.0 if 0 <= rect["x"] <= width and 0 <= rect["y"] <= height else 0.0
+                return max(0, x2 - x1) * max(0, y2 - y1) / (rect["width"] * rect["height"])
+
+            def translated(rect):
+                return None if rect is None else {
+                    **rect,
+                    "x": rect["x"] - canvas_origin["x"],
+                    "y": rect["y"] - canvas_origin["y"],
+                }
+
+            canvas_pointer = "/artboard"
+            local_count = translated_count = inferred_count = 0
+            unresolved = []
+            mode_by_id = {}
+            # First resolve nodes with direct geometric evidence.
+            for node in nodes:
+                source = node.get("source_bounds")
+                if source is None:
+                    continue
+                if node.get("source_pointer") == canvas_pointer:
+                    node["bounds"] = {"x": 0, "y": 0, "width": source["width"], "height": source["height"]}
+                    node["bounds_coordinate_mode"] = "canvas_origin"
+                    mode_by_id[node["node_id"]] = "local"
+                    translated_count += 1
+                    continue
+                local_score, moved_score = fit(source), fit(translated(source))
+                if local_score >= 0.5 and local_score > moved_score + 0.25:
+                    mode = "local"
+                elif moved_score >= 0.5 and moved_score > local_score + 0.25:
+                    mode = "translated"
+                elif local_score >= 0.5 and moved_score >= 0.5:
+                    # Nested Figma frames are board-local when both candidates fit.
+                    mode = "local"
+                    inferred_count += 1
+                else:
+                    mode = None
+                if mode:
+                    mode_by_id[node["node_id"]] = mode
+                    node["bounds"] = copy.deepcopy(source if mode == "local" else translated(source))
+                    node["bounds_coordinate_mode"] = mode
+                    local_count += mode == "local"
+                    translated_count += mode == "translated"
+
+            # Off-canvas layers inherit their resolved parent's coordinate mode.
+            pending = [node for node in nodes if node.get("source_bounds") is not None and node["node_id"] not in mode_by_id]
+            while pending:
+                progress = False
+                for node in pending[:]:
+                    mode = mode_by_id.get(node.get("parent_id"))
+                    if mode:
+                        source = node["source_bounds"]
+                        node["bounds"] = copy.deepcopy(source if mode == "local" else translated(source))
+                        node["bounds_coordinate_mode"] = mode + "_from_parent"
+                        mode_by_id[node["node_id"]] = mode
+                        inferred_count += 1
+                        pending.remove(node)
+                        progress = True
+                if not progress:
+                    break
+            unresolved = [node["node_id"] for node in pending]
+            if not unresolved:
+                coordinate_mapping.update({
+                    "verified": True,
+                    "strategy": "figma_mixed_origin_normalization",
+                    "node_modes": {"local": local_count, "translated": translated_count,
+                                   "inferred_from_parent_or_nested": inferred_count},
+                })
+                gap("nonzero_canvas_origin_normalized", canvas_origin=canvas_origin.copy(),
+                    translation=coordinate_mapping["translation"],
+                    message="Figma artboard and layer coordinates were normalized to the reference image canvas.")
+            else:
+                coordinate_mapping["unresolved_node_ids"] = unresolved
+                gap("nonzero_canvas_origin_unverified", canvas_origin=canvas_origin.copy(),
+                    unresolved_node_ids=unresolved,
+                    message="Some layer coordinates could not be mapped safely to the reference image canvas.")
+        else:
+            gap("nonzero_canvas_origin_unverified", canvas_origin=canvas_origin.copy(),
+                message="This source type does not yet provide a verified nonzero-origin mapping.")
+
     ps_assets = defaultdict(list)
     for index, asset in enumerate(raw.get("assets") or []):
         if isinstance(asset, dict) and _source_id(asset) is not None:
@@ -339,6 +440,12 @@ def normalize_design(raw: dict) -> dict:
         # document origin and is deliberately not combined with canvas positions.
         render_bounds = _rect(layer.get("ddsOriginFrame")) if field == "ddsImage" else None
         render_bounds_source = "ddsOriginFrame" if render_bounds is not None else "node.bounds"
+        if render_bounds is not None and coordinate_mapping.get("verified") and canvas_origin:
+            mode = str(node.get("bounds_coordinate_mode", ""))
+            if mode.startswith("translated") or mode == "canvas_origin":
+                render_bounds = {**render_bounds,
+                                 "x": render_bounds["x"] - canvas_origin["x"],
+                                 "y": render_bounds["y"] - canvas_origin["y"]}
         render_bounds = render_bounds if render_bounds is not None else copy.deepcopy(node["bounds"])
         asset = {
             "asset_id": asset_id,
@@ -410,9 +517,10 @@ def normalize_design(raw: dict) -> dict:
     gap("logical_coordinate_conversion_unknown",
         message="Source canvas units are preserved. Export density does not establish CSS pixel scale.")
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_type": source_type,
         "coordinate_space": "source_canvas",
+        "coordinate_mapping": coordinate_mapping,
         "canvas": {"width": width, "height": height},
         "canvas_origin": canvas_origin,
         "scale_metadata": scale_metadata,

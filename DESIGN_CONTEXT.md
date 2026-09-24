@@ -75,8 +75,12 @@ crop of valid nodes. Hidden nodes are omitted by default and can be queried with
 
 Raw attributes and DDS layout suggestions are separate. Complex transforms are
 preserved with limitations in `gaps`, rather than approximated as exact CSS.
-Nonzero source canvas origins currently fail with `UnsupportedCoordinates`;
-their relationship to the reference image needs source-specific verification.
+Figma imports whose top-level artboard uses an absolute nonzero canvas origin are
+normalized to the reference image's local canvas. Each node retains `source_bounds`
+and exposes normalized `bounds`; `coordinate_mapping` records the translation and
+verification result. Sources that cannot be verified still allow an unannotated
+read-only overview, while region inspection and export fail explicitly with
+`CoordinateMappingUnverified` rather than using uncertain geometry.
 Visibility inherited from a hidden source ancestor is preserved separately as
 `effective_source_visible`, and these nodes are not drawn over the visible image.
 Logical/CSS unit conversion is not guessed from export density. Known source
