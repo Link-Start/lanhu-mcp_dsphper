@@ -131,10 +131,10 @@ jobs:
               if response.get("id") == 2:
                   break
           tools = response["result"]["tools"]
-          assert len(tools) == 16, tools
+          assert len(tools) == 17, tools
           process.terminate()
           process.wait(timeout=10)
-          print("Windows MCP stdio handshake exposed 16 tools.")
+          print("Windows MCP stdio handshake exposed 17 tools.")
           '@ | Set-Content -Path $env:RUNNER_TEMP\windows_mcp_smoke.py -Encoding utf8
           .\venv\Scripts\python.exe $env:RUNNER_TEMP\windows_mcp_smoke.py
 
@@ -211,9 +211,9 @@ jobs:
               )
               async with Client(transport, timeout=20) as client:
                   tools = {tool.name for tool in await client.list_tools()}
-                  assert len(tools) >= 16, tools
+                  assert len(tools) == 17, tools
                   assert {'lanhu_get_design_overview', 'lanhu_inspect_design_region',
-                          'lanhu_export_design_assets'} <= tools
+                          'lanhu_export_design_assets', 'lanhu_inspect_requirement_region'} <= tools
               print('Installed stdio CLI completed an MCP handshake and listed visual tools.')
 
           asyncio.run(check_stdio())

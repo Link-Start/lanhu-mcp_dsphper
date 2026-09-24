@@ -40,11 +40,14 @@ def test_long_page_plans_overlapping_readable_tiles():
         "contentBounds": {"x": 315.5, "y": 22, "width": 1285, "height": 3661},
     }
     tiles = _plan_axure_screenshot_tiles(metrics)
-    assert len(tiles) == 4
+    assert len(tiles) == 5
     assert {tile["column"] for tile in tiles} == {0}
-    assert [tile["row"] for tile in tiles] == [0, 1, 2, 3]
+    assert [tile["row"] for tile in tiles] == [0, 1, 2, 3, 4]
     assert tiles[0]["region"]["y"] == 0
     assert tiles[-1]["region"]["y"] + tiles[-1]["region"]["height"] == 3683
+    assert all(tile["region"]["x"] == 0 for tile in tiles)
+    assert all(tile["region"]["width"] == 1920 for tile in tiles)
+    assert all(tile["region"]["height"] <= 960 for tile in tiles)
     for before, after in zip(tiles, tiles[1:]):
         before_bottom = before["region"]["y"] + before["region"]["height"]
         assert before_bottom > after["region"]["y"]
@@ -119,7 +122,7 @@ async def test_render_filters_hidden_text_and_crops_large_sparse_page(tmp_path):
     for tile in page["detail_tiles"]:
         with PillowImage.open(Path(tile["path"])) as image:
             assert image.width <= 1764
-            assert image.height <= 1400
+            assert image.height <= 960
 
 
 @pytest.mark.asyncio

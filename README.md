@@ -29,7 +29,7 @@
 
 一个面向蓝湖设计交付与需求阅读的 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 服务器。由 MCP 提供来源数据和资源，大模型结合画面理解并适配目标工程。
 
-**v1.8.5：长需求页保留原完整截图，并自动附加可读的重叠细节分块。** [版本说明](RELEASE_NOTES_v1.8.5.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
+**v1.8.6：需求页支持按文字、稳定块 ID、分块 ID 或坐标精确取局部图；长页分片保持横向完整。** [版本说明](RELEASE_NOTES_v1.8.6.md) · [设计工作流](DESIGN_CONTEXT.md) · [维护流程](MAINTAINING.md)
 
 
 🔥 **核心创新**：
@@ -436,7 +436,8 @@ AI 会自动：
 | `lanhu_resolve_invite_link` | 解析邀请链接 | 用户提供分享链接时 |
 | `lanhu_list_product_documents` | 获取项目产品文档清单 | 定位原型或需求文档 |
 | `lanhu_get_pages` | 获取原型页面列表 | 分析需求文档前必调用 |
-| `lanhu_get_ai_analyze_page_result` | 分析原型页面内容，长页返回完整图与细节分块 | 提取需求细节 |
+| `lanhu_get_ai_analyze_page_result` | 分析原型页面内容，长页返回完整图与横向完整细节分块 | 提取需求细节 |
+| `lanhu_inspect_requirement_region` | 按文字、块 ID、分块 ID 或坐标返回局部视觉证据 | 判断“这两个字段”“如下”“红框处”等模糊指代 |
 | `lanhu_get_designs` | 获取UI设计图列表 | 查看设计稿前必调用 |
 | `lanhu_get_design_overview` | 固定版本，返回设计图与节点索引 | 按稳定ID读取设计 |
 | `lanhu_inspect_design_region` | 局部裁图、编号、样式与资源ID | 大模型结合视觉定位元素 |
@@ -841,7 +842,7 @@ ROLE_MAPPING_RULES = [
 
 ### 缓存控制
 
-缓存目录由环境变量 `DATA_DIR` 控制。相对路径固定相对于 `.env` 所在目录；未使用 `.env` 时固定相对于源码目录，不会随 Cursor、Claude Code 等客户端的启动目录变化。带 `versionId` 的需求文档在版本和文件完整性匹配时可直接离线命中缓存，不再先等待蓝湖接口。`text_only` 模式只提取文字和标注，不生成截图或扫描设计样式。长页细节分块使用独立缓存；首次升级到 v1.8.5 会重建一次截图元数据，后续相同版本与分块范围直接命中缓存。
+缓存目录由环境变量 `DATA_DIR` 控制。相对路径固定相对于 `.env` 所在目录；未使用 `.env` 时固定相对于源码目录，不会随 Cursor、Claude Code 等客户端的启动目录变化。带 `versionId` 的需求文档在版本和文件完整性匹配时可直接离线命中缓存，不再先等待蓝湖接口。`text_only` 模式只提取文字和标注，不生成截图或扫描设计样式。长页细节分块使用独立缓存；v1.8.6 的缓存 schema 4 会重建一次分块元数据。分片始终保留内容区完整宽度，仅沿纵向切分，单片默认不高于 960 像素并保留重叠。`lanhu_inspect_requirement_region` 不运行 OCR：文字唯一命中时直接返回紧凑图和上下文图；重复文字返回候选预览与稳定块 ID；图片内文字可用 `tile_id` 或页面坐标继续定位。
 
 
 ```bash

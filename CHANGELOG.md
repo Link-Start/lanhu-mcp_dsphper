@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.6] - 2026-09-24
+
+### Added
+
+- Added `lanhu_inspect_requirement_region`, which returns compact visual evidence around rendered text, a stable text-block ID, a long-page tile ID, or an explicit source-page rectangle.
+- Repeated text now returns bounded candidate previews instead of silently selecting the first occurrence. The caller can choose a stable `Bxxxx` block ID and request tight, context, or section crops.
+
+### Changed
+
+- Long Axure detail tiles now preserve the complete content width and split only along the vertical axis. Default strips are at most 960 source pixels high with 96 pixels of overlap, keeping form rows and table columns together.
+- Visible Axure text blocks include deterministic page-local IDs. No OCR or layer-name convention is required.
+
+### Fixed
+
+- Region and sparse-canvas captures use Chrome DevTools `captureBeyondViewport`, including pages whose useful content begins far from the canvas origin.
+- The final long-page tile is balanced instead of being merged into an oversized tail.
+
+### Compatibility
+
+- Existing full screenshots, `text_only`, and requirement analysis calls remain available. Screenshot cache schema 4 rebuilds long-page tile metadata once after upgrade.
+- The single-file server still embeds `lanhu_design`; replacing `lanhu_mcp_server.py` remains a supported upgrade for environments whose dependencies are already installed.
+
+### Verified
+
+- All 216 offline tests pass, and a fresh wheel install exposes all 17 tools through a real FastMCP stdio handshake.
+- A six-document, nine-page structural audit covered 632 text anchors and 448 visual elements; a 1600×1100 context crop intersected nearby visible evidence for all 632 anchors.
+- On the authorized 1920×4402 sample, `T002` is now a 1920×960 full-width strip and includes the ambiguous instruction plus both target fields in one image.
+- The exact instruction query returned two focused images totaling about 208 KiB, compared with about 1.3 MiB for the full screenshot plus four tiles in the benchmark sample.
+
+See [v1.8.6 release notes](RELEASE_NOTES_v1.8.6.md) for the workflow and validation details.
+
 ## [1.8.5] - 2026-09-24
 
 ### Added

@@ -15,9 +15,9 @@ from datetime import datetime, timezone, timedelta
 from typing import Annotated, Optional, Union, List, Any
 
 # BEGIN EMBEDDED LANHU_DESIGN (generated; run scripts/embed_lanhu_design.py)
-_EMBEDDED_LANHU_DESIGN_SHA256 = "c5879918f51dbdddb40017eb35c821e2c3bc2211d64c8e4f72c70b21e608d98b"
-_EMBEDDED_LANHU_DESIGN_ZIP = """UEsDBBQAAAAIAAAAIVxNQ0vhVgAAAFkAAAAYAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5U1JSCkstKs7Mz0tNUUhJLc5Mz1NI
-LctMSc1LTlVIzEtRSCwuTi0ByuRklqUWVSqk5Rcp+CTmZZQq+DoH6CkpKXFxxceXQUyIj1ewVVAy1LPQM1XiAgBQSwMEFAAAAAgA
+_EMBEDDED_LANHU_DESIGN_SHA256 = "b7d785234c960800a197979cc98c0c523e06e0f272226e9c7c64354dcc412168"
+_EMBEDDED_LANHU_DESIGN_ZIP = """UEsDBBQAAAAIAAAAIVwU/Q3jVgAAAFkAAAAYAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5U1JSCkstKs7Mz0tNUUhJLc5Mz1NI
+LctMSc1LTlVIzEtRSCwuTi0ByuRklqUWVSqk5Rcp+CTmZZQq+DoH6CkpKXFxxceXQUyIj1ewVVAy1LPQM1PiAgBQSwMEFAAAAAgA
 AAAhXNdHRhyMEQAAUjoAABcAAABsYW5odV9kZXNpZ24vaW5zdGFsbC5wea0b/XPbtvV3/RUoe7dSqczYWZpr3Sp3TqKs3hrbZzu7
 ba6PB5GQhZoiVYK0o2b53/feA0ACFCVLvekHWwSB94X3DSgIgtNcVTzLGGcPopQzKVL2C8/nNeNKiYpN6zzNBJM5q+aCJUUq8zvG
 70RefaNYViQ8Y49Fea+WPBHRYHANkz68vWBKlACOLfiKlXXOipzxvAAIOJTMZS4ixk4rxUqhirpMBPt4eTpiJacp1ZznTFZqMJOZ
@@ -456,7 +456,7 @@ r41hjhmOczpXdqOa7pkHbfDd7I/NTF+TVu+7wAgFkv2i6gzp8ISuwe2NEf341FWBdqa7c4MtlMvC8olx
 B3Yx37JKfuKygGJNbFqMb13pPek4DW1lE/O3s9N4ZEePXQamQ4g+ar4nYfmuMjWBfd19gzhwzBcu6hntnMxfVRF8Q+/ZQB986ujB
 3BDM2xo7j6AOxb/uK9TCf8MKKq6wdzIC7JIHS3d5ZhVePjjy1fOuvXq+viTxcK/3Pcxv2KMykz3P0sycejTjFXS/N4zXjA3HFr/f
 GeLS0ZJzEYC8R+8r7WirTswnthqt/79WxfEKP1z9aKvdLQfMbty5xymtvexoLx20TLZwn58M0KKpm+1+/wdQSwECFAMUAAAACAAA
-ACFcTUNL4VYAAABZAAAAGAAAAAAAAAAAAAAApAEAAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5UEsBAhQDFAAAAAgAAAAhXNdH
+ACFcFP0N41YAAABZAAAAGAAAAAAAAAAAAAAApAEAAAAAbGFuaHVfZGVzaWduL19faW5pdF9fLnB5UEsBAhQDFAAAAAgAAAAhXNdH
 RhyMEQAAUjoAABcAAAAAAAAAAAAAAKQBjAAAAGxhbmh1X2Rlc2lnbi9pbnN0YWxsLnB5UEsBAhQDFAAAAAgAAAAhXD6cyKAqGgAA
 11IAABUAAAAAAAAAAAAAAKQBTRIAAGxhbmh1X2Rlc2lnbi9tZWRpYS5weVBLAQIUAxQAAAAIAAAAIVxL7m93cBkAABtgAAAZAAAA
 AAAAAAAAAACkAaosAABsYW5odV9kZXNpZ24vbm9ybWFsaXplLnB5UEsBAhQDFAAAAAgAAAAhXEqan4fNIgAATYAAABcAAAAAAAAA
@@ -585,17 +585,24 @@ HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "30"))
 VIEWPORT_WIDTH = int(os.getenv("VIEWPORT_WIDTH", "1920"))
 VIEWPORT_HEIGHT = int(os.getenv("VIEWPORT_HEIGHT", "1080"))
 
-# Axure visual evidence keeps the established full screenshot and adds readable source-pixel tiles.
-# Keep each detail tile reasonably close to common multimodal image budgets while
-# retaining overlap so arrows, tables and text are not lost at a seam.
-AXURE_SCREENSHOT_CACHE_SCHEMA = 3
-AXURE_TILE_WIDTH = int(os.getenv("AXURE_TILE_WIDTH", "1600"))
-AXURE_TILE_HEIGHT = int(os.getenv("AXURE_TILE_HEIGHT", "1000"))
-AXURE_TILE_OVERLAP = int(os.getenv("AXURE_TILE_OVERLAP", "128"))
+# Axure visual evidence keeps the established full screenshot and adds readable
+# horizontal strips. Requirement tables keep their complete left/right context;
+# only the vertical axis is split, with overlap across adjacent strips.
+AXURE_SCREENSHOT_CACHE_SCHEMA = 4
+AXURE_TILE_WIDTH = int(os.getenv("AXURE_TILE_WIDTH", "1600"))  # legacy setting; strips keep full width
+AXURE_TILE_HEIGHT = int(os.getenv("AXURE_TILE_HEIGHT", "960"))
+AXURE_TILE_OVERLAP = int(os.getenv("AXURE_TILE_OVERLAP", "96"))
 AXURE_TILE_TRIGGER_AREA = int(os.getenv("AXURE_TILE_TRIGGER_AREA", "3200000"))
 AXURE_TILE_TRIGGER_LONG_EDGE = int(os.getenv("AXURE_TILE_TRIGGER_LONG_EDGE", "2400"))
 AXURE_DEFAULT_TILE_LIMIT = int(os.getenv("AXURE_DEFAULT_TILE_LIMIT", "4"))
 AXURE_MAX_TILE_LIMIT = int(os.getenv("AXURE_MAX_TILE_LIMIT", "12"))
+AXURE_FOCUS_LEVELS = {
+    "tight": (960, 640),
+    "context": (1600, 1100),
+    "section": (VIEWPORT_WIDTH, 1800),
+}
+AXURE_FOCUS_PREVIEW_SIZE = (720, 420)
+AXURE_FOCUS_MAX_CANDIDATES = 8
 
 # 调试模式
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
@@ -4546,7 +4553,7 @@ def _axure_effective_region(metrics: dict) -> Optional[dict]:
 
 def _axure_axis_cuts(start: float, length: float, target: int, overlap: int,
                       rects: List[dict], axis: str) -> List[float]:
-    """Choose stable cuts near whitespace without depending on layer names."""
+    """Choose stable cuts near whitespace without producing oversized tail tiles."""
     end = start + length
     single_limit = max(target + overlap, target * 1.28)
     if length <= single_limit:
@@ -4556,14 +4563,23 @@ def _axure_axis_cuts(start: float, length: float, target: int, overlap: int,
     search_radius = min(192, max(64, overlap * 2))
     min_span = max(256, target // 2)
     cuts = [start]
-    nominal = start + stride
     key0, key1 = (("x", "right") if axis == "x" else ("y", "bottom"))
 
-    while nominal < end - min_span:
-        low = max(cuts[-1] + min_span, nominal - search_radius)
-        high = min(end - min_span, nominal + search_radius)
-        if high <= low:
+    while end - cuts[-1] > stride:
+        remaining = end - cuts[-1]
+        if remaining <= stride + min_span:
+            # A normal stride would leave a tiny tail. Split the remainder evenly;
+            # both final strips stay below the configured target after overlap.
+            cuts.append(cuts[-1] + remaining / 2)
             break
+
+        nominal = cuts[-1] + stride
+        low = max(cuts[-1] + min_span, nominal - search_radius)
+        # Whitespace seeking may shorten a strip, but never lengthen it.
+        high = min(end - min_span, nominal)
+        if high <= low:
+            cuts.append(nominal)
+            continue
         candidates = [low + step for step in range(0, int(high - low) + 1, 16)]
         if not candidates or candidates[-1] < high:
             candidates.append(high)
@@ -4586,10 +4602,7 @@ def _axure_axis_cuts(start: float, length: float, target: int, overlap: int,
         if chosen <= cuts[-1]:
             break
         cuts.append(chosen)
-        nominal = chosen + stride
 
-    if end - cuts[-1] < min_span and len(cuts) > 1:
-        cuts.pop()
     cuts.append(end)
     return cuts
 
@@ -4615,49 +4628,46 @@ def _plan_axure_screenshot_tiles(metrics: dict, text_blocks: Optional[List[dict]
                 continue
             rects.append({"x": x, "y": y, "right": x + w, "bottom": y + h})
 
-    x_cuts = _axure_axis_cuts(float(region["x"]), width, AXURE_TILE_WIDTH,
-                              AXURE_TILE_OVERLAP, rects, "x")
+    # Preserve the complete row/table context. Splitting horizontally makes
+    # labels, values and table columns ambiguous to a vision model.
     y_cuts = _axure_axis_cuts(float(region["y"]), height, AXURE_TILE_HEIGHT,
                               AXURE_TILE_OVERLAP, rects, "y")
-    if len(x_cuts) == 2 and len(y_cuts) == 2:
+    if len(y_cuts) == 2:
         return []
 
     half_overlap = AXURE_TILE_OVERLAP / 2
+    left = float(region["x"])
+    right = left + width
     tiles = []
     for row in range(len(y_cuts) - 1):
-        for column in range(len(x_cuts) - 1):
-            left = x_cuts[column] - (half_overlap if column else 0)
-            top = y_cuts[row] - (half_overlap if row else 0)
-            right = x_cuts[column + 1] + (half_overlap if column + 1 < len(x_cuts) - 1 else 0)
-            bottom = y_cuts[row + 1] + (half_overlap if row + 1 < len(y_cuts) - 1 else 0)
-            left = max(float(region["x"]), left)
-            top = max(float(region["y"]), top)
-            right = min(float(region["x"]) + width, right)
-            bottom = min(float(region["y"]) + height, bottom)
-            tile_index = len(tiles)
-            tile = {
-                "tile_id": f"T{tile_index + 1:03d}",
-                "index": tile_index,
-                "row": row,
-                "column": column,
-                "region": {
-                    "x": round(left, 2), "y": round(top, 2),
-                    "width": round(right - left, 2), "height": round(bottom - top, 2),
-                },
-            }
-            block_indexes = []
-            for block_index, block in enumerate(text_blocks or []):
-                bounds = block.get("bounds") or {}
-                try:
-                    bx, by = float(bounds["x"]), float(bounds["y"])
-                    br = bx + float(bounds["width"])
-                    bb = by + float(bounds["height"])
-                except (KeyError, TypeError, ValueError):
-                    continue
-                if br > left and bx < right and bb > top and by < bottom:
-                    block_indexes.append(block_index)
-            tile["text_block_indexes"] = block_indexes
-            tiles.append(tile)
+        top = y_cuts[row] - (half_overlap if row else 0)
+        bottom = y_cuts[row + 1] + (half_overlap if row + 1 < len(y_cuts) - 1 else 0)
+        top = max(float(region["y"]), top)
+        bottom = min(float(region["y"]) + height, bottom)
+        tile_index = len(tiles)
+        tile = {
+            "tile_id": f"T{tile_index + 1:03d}",
+            "index": tile_index,
+            "row": row,
+            "column": 0,
+            "region": {
+                "x": round(left, 2), "y": round(top, 2),
+                "width": round(right - left, 2), "height": round(bottom - top, 2),
+            },
+        }
+        block_indexes = []
+        for block_index, block in enumerate(text_blocks or []):
+            bounds = block.get("bounds") or {}
+            try:
+                bx, by = float(bounds["x"]), float(bounds["y"])
+                br = bx + float(bounds["width"])
+                bb = by + float(bounds["height"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if br > left and bx < right and bb > top and by < bottom:
+                block_indexes.append(block_index)
+        tile["text_block_indexes"] = block_indexes
+        tiles.append(tile)
     return tiles
 
 
@@ -4703,6 +4713,251 @@ async def _capture_axure_region(page, region: dict, scale: float = 1.0) -> bytes
         await session.detach()
 
 
+
+
+
+
+def _assign_axure_block_ids(blocks: Optional[List[dict]]) -> List[dict]:
+    """Attach deterministic page-local IDs without relying on inconsistent Axure element names."""
+    result = []
+    for index, block in enumerate(blocks or []):
+        item = dict(block)
+        item["block_id"] = f"B{index + 1:04d}"
+        result.append(item)
+    return result
+
+
+def _normalize_axure_anchor_text(value: str) -> str:
+    return re.sub(r"\s+", "", str(value or "")).casefold()
+
+
+def _match_axure_text_blocks(blocks: List[dict], query: str) -> List[dict]:
+    normalized_query = _normalize_axure_anchor_text(query)
+    if not normalized_query:
+        return []
+    exact = [block for block in blocks if _normalize_axure_anchor_text(block.get("text")) == normalized_query]
+    if exact:
+        return exact
+    return [block for block in blocks if normalized_query in _normalize_axure_anchor_text(block.get("text"))]
+
+
+def _center_axure_focus_region(anchor: dict, document_size: dict, width: float, height: float) -> dict:
+    try:
+        document_width = float(document_size["width"])
+        document_height = float(document_size["height"])
+        x = float(anchor["x"])
+        y = float(anchor["y"])
+        anchor_width = float(anchor["width"])
+        anchor_height = float(anchor["height"])
+        width = min(float(width), document_width)
+        height = min(float(height), document_height)
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("Invalid Axure anchor or document size")
+    if min(document_width, document_height, width, height, anchor_width, anchor_height) <= 0:
+        raise ValueError("Axure focus bounds must be positive")
+    left = min(max(0.0, x + anchor_width / 2 - width / 2), max(0.0, document_width - width))
+    top = min(max(0.0, y + anchor_height / 2 - height / 2), max(0.0, document_height - height))
+    return {
+        "x": round(left, 2),
+        "y": round(top, 2),
+        "width": round(width, 2),
+        "height": round(height, 2),
+    }
+
+
+def _clamp_axure_region(region: dict, document_size: dict) -> dict:
+    try:
+        document_width = float(document_size["width"])
+        document_height = float(document_size["height"])
+        x = max(0.0, float(region["x"]))
+        y = max(0.0, float(region["y"]))
+        width = float(region["width"])
+        height = float(region["height"])
+    except (KeyError, TypeError, ValueError):
+        raise ValueError("Invalid Axure region or document size")
+    if min(document_width, document_height, width, height) <= 0 or x >= document_width or y >= document_height:
+        raise ValueError("Axure region is outside the page")
+    return {
+        "x": round(x, 2),
+        "y": round(y, 2),
+        "width": round(min(width, document_width - x), 2),
+        "height": round(min(height, document_height - y), 2),
+    }
+
+
+def _parse_axure_focus_levels(value: str) -> List[str]:
+    requested = [item.strip().lower() for item in str(value or "tight,context").split(",") if item.strip()]
+    if not requested:
+        requested = ["tight", "context"]
+    invalid = [item for item in requested if item not in AXURE_FOCUS_LEVELS]
+    if invalid:
+        raise ValueError(f"Unknown focus level(s): {', '.join(invalid)}")
+    result = []
+    for item in requested:
+        if item not in result:
+            result.append(item)
+    return result
+
+
+async def _wait_for_axure_page(page, url: str) -> None:
+    """Load a local Axure page even when old runtimes delay DOMContentLoaded indefinitely."""
+    navigation_error = None
+    try:
+        await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+    except Exception as exc:
+        navigation_error = exc
+    try:
+        await page.locator("body").wait_for(state="attached", timeout=8000)
+    except Exception:
+        if navigation_error:
+            raise navigation_error
+        raise
+    try:
+        await page.wait_for_function(
+            """() => !!document.body && (
+                !!window.__lanhuAxurePageData ||
+                !!document.querySelector('[id^="u"], .ax_default, .annnote') ||
+                document.body.innerText.trim().length > 0
+            )""",
+            timeout=8000,
+        )
+    except Exception:
+        await page.locator("body").wait_for(state="attached", timeout=3000)
+    await page.wait_for_timeout(250)
+
+
+async def _extract_axure_page_metrics(page) -> dict:
+    return await page.evaluate('''() => {
+        const documentWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+        const documentHeight = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+        const visible = element => {
+            if (!element || !element.isConnected) return false;
+            let current = element;
+            while (current && current.nodeType === 1) {
+                const style = window.getComputedStyle(current);
+                if (style.display === 'none' || style.visibility === 'hidden' ||
+                    style.visibility === 'collapse' || Number(style.opacity) === 0 || current.hidden) return false;
+                current = current.parentElement;
+            }
+            return true;
+        };
+        const rects = [];
+        const add = rect => {
+            const x = rect.left + window.scrollX, y = rect.top + window.scrollY;
+            if (rect.width < .5 || rect.height < .5) return;
+            if (documentWidth > 4096 && documentHeight > 4096 &&
+                rect.width * rect.height > documentWidth * documentHeight * .75) return;
+            rects.push({x, y, right: x + rect.width, bottom: y + rect.height});
+        };
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let textNode;
+        while ((textNode = walker.nextNode())) {
+            if (!(textNode.textContent || '').trim() || !visible(textNode.parentElement)) continue;
+            const range = document.createRange();
+            range.selectNodeContents(textNode);
+            Array.from(range.getClientRects()).forEach(add);
+        }
+        document.querySelectorAll('img,svg,canvas,input,button,textarea,select,.annnote,[id^="u"],.ax_default,.ax_shape,.shape').forEach(el => {
+            if (!visible(el)) return;
+            const style = window.getComputedStyle(el);
+            const visual = el.matches('img,svg,canvas,input,button,textarea,select,.annnote') ||
+                style.backgroundImage !== 'none' || style.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+                parseFloat(style.borderTopWidth) > 0 || parseFloat(style.borderRightWidth) > 0 ||
+                parseFloat(style.borderBottomWidth) > 0 || parseFloat(style.borderLeftWidth) > 0;
+            if (visual) add(el.getBoundingClientRect());
+        });
+        const contentBounds = rects.length ? {
+            x: Math.min(...rects.map(r => r.x)), y: Math.min(...rects.map(r => r.y)),
+            width: Math.max(...rects.map(r => r.right)) - Math.min(...rects.map(r => r.x)),
+            height: Math.max(...rects.map(r => r.bottom)) - Math.min(...rects.map(r => r.y))
+        } : null;
+        return {documentWidth, documentHeight, contentBounds, contentRects: rects.slice(0, 5000)};
+    }''')
+
+
+async def capture_axure_focus_regions_internal(
+    resource_dir: str,
+    page_name: str,
+    output_dir: str,
+    requests: List[dict],
+    version_id: str = "",
+    text_blocks: Optional[List[dict]] = None,
+    tile_id: str = "",
+) -> dict:
+    """Capture small source-coordinate regions without first producing a full-page PNG."""
+    import http.server
+    import socketserver
+    import threading
+
+    html_file = next((path.name for path in Path(resource_dir).glob("*.html") if path.stem == page_name), None)
+    if not html_file:
+        raise ValueError(f"Page {page_name} does not exist")
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    abs_dir = os.path.abspath(resource_dir)
+    handler = lambda *args, **kwargs: http.server.SimpleHTTPRequestHandler(*args, directory=abs_dir, **kwargs)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    httpd.daemon_threads = True
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+
+    captures = []
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=True)
+            try:
+                page = await browser.new_page(viewport={"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
+                await _wait_for_axure_page(page, f"http://127.0.0.1:{httpd.server_address[1]}/{html_file}")
+                metrics = await _extract_axure_page_metrics(page)
+                document_size = {"width": metrics["documentWidth"], "height": metrics["documentHeight"]}
+                tile_plan = _plan_axure_screenshot_tiles(metrics, text_blocks)
+                if tile_id:
+                    normalized_tile_id = str(tile_id).strip().upper()
+                    tile = next((item for item in tile_plan if item["tile_id"] == normalized_tile_id), None)
+                    if not tile:
+                        raise ValueError(
+                            f"Unknown tile_id {tile_id}; available: " +
+                            ", ".join(item["tile_id"] for item in tile_plan)
+                        )
+                    requests = [{"label": normalized_tile_id, "kind": "tile", "region": tile["region"]}]
+
+                for item in requests:
+                    if item.get("region"):
+                        region = _clamp_axure_region(item["region"], document_size)
+                    else:
+                        region = _center_axure_focus_region(
+                            item["anchor"], document_size, item["width"], item["height"]
+                        )
+                    cache_key = json.dumps(
+                        {"version": version_id, "page": page_name, "region": region},
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                    digest = hashlib.sha256(cache_key.encode("utf-8")).hexdigest()[:16]
+                    safe_name = re.sub(r'[^\w\s-]', '_', page_name)
+                    image_path = output_path / f"{safe_name}__focus_{digest}.png"
+                    from_cache = image_path.exists()
+                    if not from_cache:
+                        await page.evaluate(
+                            "region => window.scrollTo(Math.max(0, region.x), Math.max(0, region.y))",
+                            region,
+                        )
+                        await page.wait_for_timeout(80)
+                        image_path.write_bytes(await _capture_axure_region(page, region))
+                    captures.append({
+                        "label": item.get("label") or item.get("kind") or "focus",
+                        "kind": item.get("kind") or "focus",
+                        "path": str(image_path),
+                        "region": region,
+                        "from_cache": from_cache,
+                    })
+                return {"captures": captures, "document_size": document_size, "tile_plan": tile_plan}
+            finally:
+                await browser.close()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
 
 
 async def screenshot_page_internal(resource_dir: str, page_names: List[str], output_dir: str,
@@ -4790,7 +5045,9 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
             page_text_blocks = []
             if text_blocks_file.exists():
                 try:
-                    page_text_blocks = json.loads(text_blocks_file.read_text(encoding='utf-8'))
+                    page_text_blocks = _assign_axure_block_ids(
+                        json.loads(text_blocks_file.read_text(encoding='utf-8'))
+                    )
                 except Exception:
                     pass
 
@@ -4870,28 +5127,8 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                     })
                     continue
 
-                # 本地 Axure 页面可能保留轮询或长期连接，networkidle 会无意义地
-                # 等满超时。DOM 事件超时后，只要目标文档与 body 已稳定就继续。
                 url = f"http://127.0.0.1:{port}/{html_file}"
-                try:
-                    await page.goto(url, wait_until='domcontentloaded', timeout=15000)
-                except Exception:
-                    if page.url != url:
-                        raise
-                await page.locator('body').wait_for(state='attached', timeout=8000)
-                try:
-                    await page.wait_for_function(
-                        """() => !!document.body && (
-                            !!window.__lanhuAxurePageData ||
-                            !!document.querySelector('[id^=\"u\"], .ax_default, .annnote') ||
-                            document.body.innerText.trim().length > 0
-                        )""",
-                        timeout=8000,
-                    )
-                except Exception:
-                    # 纯视觉页面可能没有文字或映射数据；继续使用稳定的 body。
-                    await page.locator('body').wait_for(state='attached', timeout=3000)
-                await page.wait_for_timeout(250)
+                await _wait_for_axure_page(page, url)
 
                 # Extract only rendered text nodes. Each block carries source-page
                 # coordinates so callers can verify it against the screenshot.
@@ -4936,9 +5173,10 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                     }
                     return blocks;
                 }''')
+                page_text_blocks = _assign_axure_block_ids(page_text_blocks)
                 if page_text_blocks:
-                    page_text = "[可见页面文字（含源页面坐标）]\n" + "\n".join(
-                        f"[x={block['bounds']['x']} y={block['bounds']['y']} "
+                    page_text = "[可见页面文字（含稳定块ID与源页面坐标）]\n" + "\n".join(
+                        f"[{block['block_id']} x={block['bounds']['x']} y={block['bounds']['y']} "
                         f"w={block['bounds']['width']} h={block['bounds']['height']}] {block['text']}"
                         for block in page_text_blocks
                     )
@@ -5196,8 +5434,8 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                                      "height": page_metrics["documentHeight"]}
                     clip = _select_axure_screenshot_clip(page_metrics)
                     if clip:
-                        # Preserve the established main-screenshot path for compatibility.
-                        screenshot_bytes = await page.screenshot(clip=clip)
+                        # CDP captureBeyondViewport also supports content far from (0, 0).
+                        screenshot_bytes = await _capture_axure_region(page, clip)
                         screenshot_metadata = {
                             "screenshot_mode": "content_crop", "screenshot_region": clip,
                             "document_size": document_size, "tile_plan": tile_plan,
@@ -6467,6 +6705,183 @@ async def lanhu_get_ai_analyze_page_result(
                 failure_text += f"  ✗ {r['page_name']}: {r.get('error', 'Unknown')}\n"
             content.append(failure_text)
 
+        return content
+    finally:
+        await extractor.close()
+
+
+
+@mcp.tool()
+async def lanhu_inspect_requirement_region(
+    url: Annotated[str, "Lanhu PRD/Axure URL containing pid and docId."],
+    page_name: Annotated[str, "Exact display page name from lanhu_get_pages, or its HTML filename."],
+    query: Annotated[str, "Visible page text used as an anchor. Repeated text returns candidate previews instead of guessing."] = "",
+    block_id: Annotated[str, "Stable page-local text block ID such as B0009, returned by this tool or requirement text output."] = "",
+    tile_id: Annotated[str, "Long-page tile ID such as T002. Useful when text is baked into an embedded screenshot."] = "",
+    x: Annotated[Optional[float], "Source-page x coordinate for a visual anchor bbox."] = None,
+    y: Annotated[Optional[float], "Source-page y coordinate for a visual anchor bbox."] = None,
+    width: Annotated[Optional[float], "Source-page anchor width."] = None,
+    height: Annotated[Optional[float], "Source-page anchor height."] = None,
+    levels: Annotated[str, "Comma-separated crop levels: tight,context,section. Default: tight,context."] = "tight,context",
+    max_candidates: Annotated[int, "Maximum duplicate-text candidate previews, 1-8. Default: 5."] = 5,
+    ctx: Context = None,
+) -> List[Union[str, Image]]:
+    """Return compact, readable visual evidence around one requirement reference.
+
+    Use this for phrases such as "这两个字段", "如下", "红框处", or when a full-page
+    screenshot is too large to read. The tool never runs OCR and never guesses field semantics.
+    It searches rendered Axure text coordinates, returns all ambiguous matches as previews, and
+    lets the vision model choose a block_id. For text baked into an image, pass a source bbox or
+    a tile_id from the normal requirement analysis response.
+    """
+    extractor = LanhuExtractor()
+    try:
+        user_name, user_role = get_user_info(ctx) if ctx else ("匿名", "未知")
+        project_id = get_project_id_from_url(url)
+        if project_id:
+            MessageStore(project_id).record_collaborator(user_name, user_role)
+
+        params = extractor.parse_url(url)
+        doc_id = params["doc_id"]
+        resource_dir = str(DATA_DIR / f"axure_extract_{doc_id[:8]}")
+        screenshot_dir = str(DATA_DIR / f"axure_extract_{doc_id[:8]}_screenshots")
+        region_dir = str(DATA_DIR / f"axure_extract_{doc_id[:8]}_regions")
+        download_result = await extractor.download_resources(url, resource_dir)
+        if download_result["status"] in ["downloaded", "updated"]:
+            fix_html_files(resource_dir)
+
+        all_pages = download_result.get("pages")
+        if not isinstance(all_pages, list):
+            all_pages = (await extractor.get_pages_list(url))["pages"]
+        page_map = {page["name"]: page["filename"].replace(".html", "") for page in all_pages}
+        target_page = page_map.get(page_name, page_name)
+        display_name = next(
+            (page["name"] for page in all_pages if page["filename"].replace(".html", "") == target_page),
+            page_name,
+        )
+        version_id = download_result.get("version_id", "")
+        rendered = await screenshot_page_internal(
+            resource_dir,
+            [target_page],
+            screenshot_dir,
+            return_base64=False,
+            version_id=version_id,
+            capture_screenshot=False,
+            include_design_info=False,
+        )
+        if not rendered or not rendered[0].get("success"):
+            error = rendered[0].get("error", "unknown render error") if rendered else "no render result"
+            raise ValueError(f"Unable to inspect page {display_name}: {error}")
+        blocks = _assign_axure_block_ids(rendered[0].get("page_text_blocks") or [])
+
+        bbox_values = (x, y, width, height)
+        has_any_bbox = any(value is not None for value in bbox_values)
+        has_bbox = all(value is not None for value in bbox_values)
+        if has_any_bbox and not has_bbox:
+            raise ValueError("x, y, width and height must be provided together")
+        anchor_methods = sum(bool(value) for value in (query.strip(), block_id.strip(), tile_id.strip())) + int(has_bbox)
+        if anchor_methods != 1:
+            raise ValueError("Provide exactly one anchor: query, block_id, tile_id, or x/y/width/height")
+
+        max_candidates = max(1, min(AXURE_FOCUS_MAX_CANDIDATES, int(max_candidates or 5)))
+        anchor = None
+        matches = []
+        requests = []
+        response_mode = "focus"
+
+        if query.strip():
+            matches = _match_axure_text_blocks(blocks, query)
+            if not matches:
+                return [json.dumps({
+                    "status": "no_text_match",
+                    "page": display_name,
+                    "query": query,
+                    "visible_text_blocks": len(blocks),
+                    "next": "The words may be baked into an image. Use tile_id or source x/y/width/height.",
+                }, ensure_ascii=False)]
+            if len(matches) > 1:
+                response_mode = "candidates"
+                for match in matches[:max_candidates]:
+                    requests.append({
+                        "label": match["block_id"],
+                        "kind": "candidate_preview",
+                        "anchor": match["bounds"],
+                        "width": AXURE_FOCUS_PREVIEW_SIZE[0],
+                        "height": AXURE_FOCUS_PREVIEW_SIZE[1],
+                    })
+            else:
+                anchor = matches[0]
+        elif block_id.strip():
+            normalized_block_id = block_id.strip().upper()
+            anchor = next((block for block in blocks if block["block_id"] == normalized_block_id), None)
+            if not anchor:
+                raise ValueError(f"Unknown block_id {block_id}; page has {len(blocks)} visible text blocks")
+        elif has_bbox:
+            anchor = {
+                "block_id": None,
+                "text": None,
+                "bounds": {"x": x, "y": y, "width": width, "height": height},
+            }
+
+        if anchor:
+            for level in _parse_axure_focus_levels(levels):
+                crop_width, crop_height = AXURE_FOCUS_LEVELS[level]
+                requests.append({
+                    "label": level,
+                    "kind": "focus_region",
+                    "anchor": anchor["bounds"],
+                    "width": crop_width,
+                    "height": crop_height,
+                })
+
+        captured = await capture_axure_focus_regions_internal(
+            resource_dir,
+            target_page,
+            region_dir,
+            requests,
+            version_id=version_id,
+            text_blocks=blocks,
+            tile_id=tile_id,
+        )
+        images = captured["captures"]
+        content: List[Union[str, Image]] = []
+
+        if response_mode == "candidates":
+            returned_matches = matches[:max_candidates]
+            content.append(json.dumps({
+                "status": "ambiguous_text",
+                "page": display_name,
+                "query": query,
+                "match_count": len(matches),
+                "returned_candidates": len(returned_matches),
+                "candidates": [
+                    {"block_id": match["block_id"], "text": match["text"], "bbox": match["bounds"]}
+                    for match in returned_matches
+                ],
+                "next": "Choose the matching preview and call again with its block_id.",
+            }, ensure_ascii=False))
+        else:
+            content.append(json.dumps({
+                "status": "ok",
+                "page": display_name,
+                "anchor": (
+                    {"block_id": anchor.get("block_id"), "text": anchor.get("text"), "bbox": anchor["bounds"]}
+                    if anchor else {"tile_id": tile_id.strip().upper()}
+                ),
+                "document_size": captured["document_size"],
+                "images": [
+                    {"image": index, "level": image["label"], "bbox": image["region"], "cached": image["from_cache"]}
+                    for index, image in enumerate(images, 1)
+                ],
+            }, ensure_ascii=False))
+
+        for index, image in enumerate(images, 1):
+            region = image["region"]
+            content.append(
+                f"Image {index} | {display_name} | {image['label']} | "
+                f"source x={region['x']} y={region['y']} w={region['width']} h={region['height']}"
+            )
+            content.append(Image(path=image["path"]))
         return content
     finally:
         await extractor.close()
@@ -7797,7 +8212,7 @@ except ModuleNotFoundError as exc:
     if missing_name != "PIL" and missing_name != "lanhu_design" and not missing_name.startswith("lanhu_design."):
         raise
 
-    __version__ = "1.8.5"
+    __version__ = "1.8.6"
     DesignService = None
 
     class DesignError(Exception):

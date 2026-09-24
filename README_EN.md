@@ -14,7 +14,7 @@
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for reading Lanhu design documents, Axure prototypes, UI designs and source assets, with a server-local team message board.
 
-**v1.8.5 preserves the established full Axure screenshot and automatically adds readable overlapping detail tiles for long pages.** See [the release notes](RELEASE_NOTES_v1.8.5.md).
+**v1.8.6 adds focused requirement-region inspection by text, stable block ID, tile ID, or coordinates, and keeps long-page tiles full-width.** See [the release notes](RELEASE_NOTES_v1.8.6.md).
 
 **MCP client integration:**
 
@@ -126,7 +126,7 @@ Edit `.env` and replace `your_lanhu_cookie_here` with your Lanhu Cookie. macOS m
 
 With `uv`, create the environment first: `uv venv venv --python 3.13`, then run `uv pip install --python venv/bin/python -e .`.
 
-For an existing source checkout, upgrade dependencies with `python -m pip install -U -r requirements.txt` and reinstall the package with `python -m pip install -e .`. Restart the server and reconnect the MCP client so it discovers all 16 tools. Docker users should rebuild the image; restarting an old image does not load the new package or dependencies.
+For an existing source checkout, upgrade dependencies with `python -m pip install -U -r requirements.txt` and reinstall the package with `python -m pip install -e .`. Restart the server and reconnect the MCP client so it discovers all 17 tools. Docker users should rebuild the image; restarting an old image does not load the new package or dependencies.
 
 ### Single-file deployment upgrades
 
@@ -559,7 +559,8 @@ Show all knowledge base messages about "testing"
 | `lanhu_resolve_invite_link` | Parse invite link | When user provides share link |
 | `lanhu_list_product_documents` | Discover product documents in a project | Find a PRD/prototype before choosing its pages |
 | `lanhu_get_pages` | Get prototype page list | Must call before analyzing requirements |
-| `lanhu_get_ai_analyze_page_result` | Analyze prototype pages; return full images and detail tiles for long pages | Extract requirement details |
+| `lanhu_get_ai_analyze_page_result` | Analyze prototype pages; return full images and full-width detail strips for long pages | Extract requirement details |
+| `lanhu_inspect_requirement_region` | Return focused visual evidence by text, block ID, tile ID, or source coordinates | Resolve references such as “these two fields”, “below”, or “inside the red box” |
 | `lanhu_get_designs` | Get UI design list | Must call before viewing designs |
 | `lanhu_get_ai_analyze_design_result` | Analyze UI designs | View design drafts |
 | `lanhu_get_design_slices` | Get legacy slice URLs and metadata | Inspect available resources without installing files |
@@ -573,7 +574,7 @@ Show all knowledge base messages about "testing"
 | `lanhu_say_delete` | Delete message | Remove messages |
 | `lanhu_get_members` | View collaborators | View team members |
 
-The 16 tools include a server-local `lanhu_say*` message board; those messages are not Lanhu's native design review comments.
+The 17 tools include a server-local `lanhu_say*` message board; those messages are not Lanhu's native design review comments.
 
 ## 📁 Project Structure
 
@@ -609,7 +610,7 @@ ROLE_MAPPING_RULES = [
 
 ### Cache Control
 
-The cache directory is controlled by `DATA_DIR`. A relative path is anchored to the `.env` directory, or to the source directory when no `.env` exists, so changing the MCP client's working directory does not create a second cache. For requirement URLs containing `versionId`, an intact matching cache returns without first contacting Lanhu. `text_only` extracts text and annotations without screenshots or design-style scans. Long-page detail tiles use a separate cache schema; the first v1.8.5 call rebuilds screenshot metadata once, then identical version/tile ranges return from cache.
+The cache directory is controlled by `DATA_DIR`. A relative path is anchored to the `.env` directory, or to the source directory when no `.env` exists, so changing the MCP client's working directory does not create a second cache. For requirement URLs containing `versionId`, an intact matching cache returns without first contacting Lanhu. `text_only` extracts text and annotations without screenshots or design-style scans. Long-page detail tiles use cache schema 4 in v1.8.6 and rebuild their metadata once. Tiles preserve the full content width, split only on the vertical axis, default to at most 960 pixels high, and overlap adjacent strips. `lanhu_inspect_requirement_region` does not run OCR: a unique text match returns tight and context crops; duplicates return candidate previews with stable block IDs; text baked into images can be located by tile ID or source coordinates.
 
 
 ```bash
