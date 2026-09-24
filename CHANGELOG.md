@@ -11,17 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- POSIX and Windows installers now route Playwright 1.58+ Chromium downloads through npmmirror's dedicated Chrome for Testing mirror, while retaining the legacy npmmirror path and official CDN fallbacks.
-- Explicit `PLAYWRIGHT_DOWNLOAD_HOST` and `PLAYWRIGHT_CHROMIUM_DOWNLOAD_HOST` overrides remain authoritative.
-- Windows release verification now executes the browser installation path inside `easy-install.bat` before launching Chromium and completing the MCP smoke test.
-- Troubleshooting instructions now explain how to reinstall the browser matching the current Playwright version.
+- Requirement `text_only` analysis no longer scans design styles or captures full-page screenshots.
+- Historical single-file deployments no longer crash when the optional `lanhu_design` package directory is absent; requirement tools remain available and design tools return an explicit installation error.
+- Axure rendering uses bounded DOM/page readiness instead of waiting for `networkidle` plus a fixed two-second delay on every page.
+- Requirement analysis reuses the downloaded sitemap instead of requesting it twice.
+- Matching versioned requirement caches can return without contacting Lanhu; cache metadata now persists the page list needed for the offline fast path.
+- Relative `DATA_DIR` values resolve against the `.env` or source directory, so cache location no longer changes with the MCP client's working directory.
+- POSIX and Windows installers route Playwright 1.58+ Chromium downloads through npmmirror's Chrome for Testing mirror, with legacy and official fallbacks.
 
 ### Verified
 
-- A live three-page Lanhu Axure document returned three PNG image contents plus extracted text over MCP stdio.
-- Full-page captures measured 1920×1080, 1920×1256, and 1920×1080, confirming that pages taller than the viewport remain complete.
+- A live three-page v1.8.3 cold render took 10.118 seconds; the corrected v1.8.4 internal full render took 2.565 seconds.
+- Real MCP stdio warm calls completed in 0.135–0.136 seconds and returned the expected text and full-page PNG contents.
+- Regression coverage enforces no-network exact-version cache hits, one sitemap request per analysis, and screenshot-free text-only mode.
+- Windows release verification installs and launches Chromium before completing the MCP smoke test.
 
-See [v1.8.4 release notes](RELEASE_NOTES_v1.8.4.md) for the failure mode and validation evidence.
+See [v1.8.4 release notes](RELEASE_NOTES_v1.8.4.md) for the failure analysis and validation evidence.
 
 ## [1.8.3] - 2026-09-20
 

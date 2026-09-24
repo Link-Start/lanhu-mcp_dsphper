@@ -158,3 +158,37 @@ async def test_notification_diagnostics_use_stderr_only(notification_server, mon
     assert len(calls) == 1
     assert output.out == ""
     assert "飞书通知" in output.err
+
+
+def test_single_file_upgrade_keeps_requirement_server_importable(tmp_path):
+    """Historical deployments often replace only lanhu_mcp_server.py."""
+    import subprocess
+    import sys
+
+    script = tmp_path / "single_file_probe.py"
+    script.write_text(
+        """
+import builtins
+import runpy
+
+real_import = builtins.__import__
+def without_design(name, *args, **kwargs):
+    if name == 'lanhu_design' or name.startswith('lanhu_design.'):
+        error = ModuleNotFoundError("No module named 'lanhu_design'")
+        error.name = 'lanhu_design'
+        raise error
+    return real_import(name, *args, **kwargs)
+
+builtins.__import__ = without_design
+namespace = runpy.run_path(%r, run_name='lanhu_single_file')
+assert namespace['_design_service'] is None
+assert namespace['__version__'] == '1.8.4'
+print('single-file requirement server import ok')
+""" % str(Path(__file__).parents[1] / "lanhu_mcp_server.py"),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [sys.executable, str(script)], cwd=tmp_path, capture_output=True, text=True, timeout=30
+    )
+    assert result.returncode == 0, result.stderr
+    assert "single-file requirement server import ok" in result.stdout

@@ -87,8 +87,14 @@ DDS_COOKIE = os.getenv("DDS_COOKIE", COOKIE)
 DEFAULT_FEISHU_WEBHOOK = "https://open.feishu.cn/open-apis/bot/v2/hook/your-webhook-key-here"
 FEISHU_WEBHOOK_URL = os.getenv("FEISHU_WEBHOOK_URL", DEFAULT_FEISHU_WEBHOOK)
 
-# 数据存储目录
-DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
+# 数据存储目录。相对路径固定相对于 .env（或源码目录），不随 MCP 客户端的
+# 工作目录变化；否则同一服务从不同项目启动时会写入不同缓存，表现为缓存永不命中。
+data_dir_value = Path(os.getenv("DATA_DIR", "./data")).expanduser()
+if data_dir_value.is_absolute():
+    DATA_DIR = data_dir_value
+else:
+    data_dir_base = env_path.parent if env_path.is_file() else Path(__file__).resolve().parent
+    DATA_DIR = (data_dir_base / data_dir_value).resolve()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # HTTP 请求超时时间（秒）
@@ -2879,6 +2885,39 @@ class LanhuExtractor:
 
         return (False, 'up_to_date', [])
 
+    @staticmethod
+    def _extract_pages(project_mapping: dict) -> list[dict]:
+        """从 Axure sitemap 提取稳定的页面目录，不发起额外网络请求。"""
+        root_nodes = (project_mapping.get('sitemap') or {}).get('rootNodes', [])
+        pages_list = []
+
+        def walk(nodes, parent_path="", level=0, parent_folder=None):
+            for node in nodes or []:
+                page_name = node.get('pageName', '')
+                url = node.get('url', '')
+                node_type = node.get('type', 'Wireframe')
+                current_path = f"{parent_path}/{page_name}" if parent_path else page_name
+                is_pure_folder = node_type == 'Folder' and not url
+                if page_name and url:
+                    pages_list.append({
+                        'index': len(pages_list) + 1,
+                        'name': page_name,
+                        'filename': url,
+                        'id': node.get('id', ''),
+                        'type': node_type,
+                        'level': level,
+                        'folder': parent_folder or '根目录',
+                        'path': current_path,
+                        'has_children': bool(node.get('children')),
+                    })
+                children = node.get('children', [])
+                if children:
+                    walk(children, current_path, level + 1,
+                         page_name if is_pure_folder else parent_folder)
+
+        walk(root_nodes)
+        return pages_list
+
     async def get_pages_list(self, url: str) -> dict:
         """获取文档的所有页面列表（仅包含sitemap中的页面，与Web界面一致）"""
         params = self.parse_url(url)
@@ -2921,70 +2960,7 @@ class LanhuExtractor:
         response.raise_for_status()
         project_mapping = response.json()
 
-        # 从sitemap获取页面列表（只返回在导航中显示的页面）
-        sitemap = project_mapping.get('sitemap', {})
-        root_nodes = sitemap.get('rootNodes', [])
-
-        # 递归提取所有页面（保留层级结构）
-        def extract_pages(nodes, pages_list, parent_path="", level=0, parent_folder=None):
-            """
-            递归提取页面，保留层级信息
-            
-            根据真实蓝湖sitemap结构：
-            - 纯文件夹：type="Folder" 且 url=""
-            - 页面节点：有url字段（type="Wireframe"等）
-            - 页面可以有children（子页面）
-            
-            Args:
-                nodes: 当前层级的节点列表
-                pages_list: 输出的页面列表
-                parent_path: 父级路径（用/分隔）
-                level: 当前层级深度（0为根）
-                parent_folder: 所属文件夹名称（最近的Folder节点）
-            """
-            for node in nodes:
-                page_name = node.get('pageName', '')
-                url = node.get('url', '')
-                node_type = node.get('type', 'Wireframe')
-                node_id = node.get('id', '')
-                
-                # 构建当前路径
-                current_path = f"{parent_path}/{page_name}" if parent_path else page_name
-                
-                # 判断是否为纯文件夹（type=Folder 且 无url）
-                is_pure_folder = (node_type == 'Folder' and not url)
-                
-                if page_name and url:
-                    # 这是一个页面（有url的都是页面）
-                    pages_list.append({
-                        'index': len(pages_list) + 1,
-                        'name': page_name,
-                        'filename': url,
-                        'id': node_id,
-                        'type': node_type,
-                        'level': level,
-                        'folder': parent_folder or '根目录',  # 所属文件夹
-                        'path': current_path,  # 完整路径
-                        'has_children': bool(node.get('children'))  # 是否有子页面
-                    })
-                
-                # 递归处理子节点
-                children = node.get('children', [])
-                if children:
-                    # 如果当前是纯文件夹，更新parent_folder
-                    # 如果当前是页面，保持原parent_folder
-                    next_folder = page_name if is_pure_folder else parent_folder
-                    
-                    extract_pages(
-                        children, 
-                        pages_list, 
-                        parent_path=current_path,
-                        level=level + 1,
-                        parent_folder=next_folder
-                    )
-
-        pages_list = []
-        extract_pages(root_nodes, pages_list)
+        pages_list = self._extract_pages(project_mapping)
 
         # 格式化时间（转换为东八区/北京时间）
         def format_time(time_str):
@@ -3074,6 +3050,31 @@ class LanhuExtractor:
             }
         """
         params = self.parse_url(url)
+        output_path = Path(output_dir)
+
+        # 带 versionId 的链接可以安全复用同一不可变版本。命中时完全不访问蓝湖，
+        # 避免接口暂时变慢导致“明明有缓存仍然超时”。旧缓存没有 page_list 时会
+        # 自动走一次联网路径并升级缓存格式。
+        if not force_update and params.get('version_id') and output_path.exists():
+            cache_meta = self._load_cache_meta(output_path)
+            cached_pages = cache_meta.get('page_list')
+            if cache_meta.get('version_id') == params['version_id'] and isinstance(cached_pages, list):
+                expected_mapping = {'pages': {
+                    page.get('filename'): {} for page in cached_pages if page.get('filename')
+                }}
+                need_update, _, _ = self._should_update_cache(
+                    output_path, params['version_id'], expected_mapping
+                )
+                if not need_update:
+                    return {
+                        'status': 'cached',
+                        'version_id': params['version_id'],
+                        'reason': 'exact_version_cache',
+                        'output_dir': output_dir,
+                        'pages': cached_pages,
+                        'document_name': cache_meta.get('document_name', 'Unknown'),
+                    }
+
         doc_info = await self.get_document_info(
             params['project_id'], params['doc_id'],
             team_id=params.get('team_id'), page_id=params.get('page_id')
@@ -3089,8 +3090,7 @@ class LanhuExtractor:
         response.raise_for_status()
         project_mapping = response.json()
 
-        # 创建输出目录
-        output_path = Path(output_dir)
+        pages_list = self._extract_pages(project_mapping)
 
         # 检查是否需要更新
         if not force_update and output_path.exists():
@@ -3103,7 +3103,9 @@ class LanhuExtractor:
                     'status': 'cached',
                     'version_id': version_id,
                     'reason': reason,
-                    'output_dir': output_dir
+                    'output_dir': output_dir,
+                    'pages': pages_list,
+                    'document_name': doc_info.get('name', 'Unknown'),
                 }
 
             # 如果只是文件缺失，可以增量下载
@@ -3159,6 +3161,7 @@ class LanhuExtractor:
             'document_name': doc_info.get('name', 'Unknown'),
             'download_time': asyncio.get_event_loop().time(),
             'pages': list(pages.keys()),
+            'page_list': pages_list,
             'total_files': len(downloaded_files)
         }
         self._save_cache_meta(output_path, cache_meta)
@@ -3167,7 +3170,9 @@ class LanhuExtractor:
             'status': 'downloaded',
             'version_id': version_id,
             'reason': 'first_download' if not output_path.exists() else 'version_changed',
-            'output_dir': output_dir
+            'output_dir': output_dir,
+            'pages': pages_list,
+            'document_name': doc_info.get('name', 'Unknown'),
         }
 
     async def _download_page_resources(self, page_mapping: dict, output_dir: Path, skip_document_js: bool = False):
@@ -4006,8 +4011,15 @@ function lanhu_Axure_Mapping_Data(data) {
 
 
 async def screenshot_page_internal(resource_dir: str, page_names: List[str], output_dir: str,
-                                   return_base64: bool = True, version_id: str = None) -> List[dict]:
-    """内部截图函数（同时提取页面文本），支持智能缓存"""
+                                   return_base64: bool = True, version_id: str = None,
+                                   capture_screenshot: bool = True,
+                                   include_design_info: bool = True) -> List[dict]:
+    """渲染 Axure 页面并提取内容。
+
+    ``capture_screenshot=False`` 用于 text_only 扫描：仍通过浏览器取得动态文本和
+    标注，但跳过昂贵的样式遍历与全页截图。完整模式可复用文本缓存；如果截图尚未
+    生成，则只在完整模式中补齐截图和样式。
+    """
     import http.server
     import socketserver
     import threading
@@ -4038,9 +4050,14 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
         styles_file = output_path / f"{safe_name}_styles.json"
         annotations_file = output_path / f"{safe_name}_annotations.json"
         
-        # 如果版本相同且文件存在，复用缓存
-        if (version_id and cached_version == version_id and 
-            screenshot_file.exists() and annotations_file.exists()):
+        # text_only 只要求文本与标注缓存；完整模式还要求截图和样式缓存。
+        cache_files_ready = text_file.exists() and annotations_file.exists()
+        if capture_screenshot:
+            cache_files_ready = cache_files_ready and screenshot_file.exists()
+            if include_design_info:
+                cache_files_ready = cache_files_ready and styles_file.exists()
+
+        if version_id and cached_version == version_id and cache_files_ready:
             # 读取缓存的文本内容
             page_text = ""
             if text_file.exists():
@@ -4066,16 +4083,18 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                 except Exception:
                     pass
             
-            cached_results.append({
+            cached_result = {
                 'page_name': page_name,
                 'success': True,
-                'screenshot_path': str(screenshot_file),
                 'page_text': page_text if page_text else "(Cached result)",
                 'page_design_info': page_design_info,
                 'page_annotations': page_annotations,
-                'size': f"{screenshot_file.stat().st_size / 1024:.1f}KB",
                 'from_cache': True
-            })
+            }
+            if capture_screenshot:
+                cached_result['screenshot_path'] = str(screenshot_file)
+                cached_result['size'] = f"{screenshot_file.stat().st_size / 1024:.1f}KB"
+            cached_results.append(cached_result)
         else:
             pages_to_render.append(page_name)
     
@@ -4085,17 +4104,17 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
     if not pages_to_render:
         return results
     
-    # 启动HTTP服务器（只有需要渲染时才启动）
-    import random
-    port = random.randint(8800, 8900)
+    # 启动HTTP服务器（只有需要渲染时才启动）。让系统选择空闲端口，
+    # 避免并发 MCP 请求随机撞端口后表现为偶发超时。
     abs_dir = os.path.abspath(resource_dir)
     handler = lambda *args, **kwargs: http.server.SimpleHTTPRequestHandler(
         *args, directory=abs_dir, **kwargs
     )
-    httpd = socketserver.TCPServer(("", port), handler)
+    httpd = socketserver.ThreadingTCPServer(("127.0.0.1", 0), handler)
+    httpd.daemon_threads = True
+    port = httpd.server_address[1]
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
-    time.sleep(1)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -4119,10 +4138,23 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                     })
                     continue
 
-                # 访问页面
-                url = f"http://localhost:{port}/{html_file}"
-                await page.goto(url, wait_until='networkidle', timeout=30000)
-                await page.wait_for_timeout(2000)
+                # 本地 Axure 页面可能保留轮询或长期连接，networkidle 会无意义地
+                # 等满 30 秒。先等 DOM，再用有上限的条件等待动态节点出现。
+                url = f"http://127.0.0.1:{port}/{html_file}"
+                await page.goto(url, wait_until='domcontentloaded', timeout=15000)
+                try:
+                    await page.wait_for_function(
+                        """() => document.readyState === 'complete' && !!document.body && (
+                            !!window.__lanhuAxurePageData ||
+                            !!document.querySelector('[id^=\"u\"], .ax_default, .annnote') ||
+                            document.body.innerText.trim().length > 0
+                        )""",
+                        timeout=8000,
+                    )
+                except Exception:
+                    # 纯视觉页面可能没有文字或映射数据；继续使用当前 DOM。
+                    pass
+                await page.wait_for_timeout(250)
 
                 # Extract page text content (optimized for Axure)
                 page_text = await page.evaluate('''() => {
@@ -4344,7 +4376,7 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                         fontSpecs: sortObj(fontSpecs).slice(0, 15),
                         images: images.slice(0, 30)
                     };
-                }''')
+                }''') if include_design_info else None
 
                 # 截图
                 safe_name = re.sub(r'[^\w\s-]', '_', page_name)
@@ -4353,11 +4385,10 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                 styles_path = output_path / f"{safe_name}_styles.json"
                 annotations_path = output_path / f"{safe_name}_annotations.json"
 
-                # 获取截图字节
-                screenshot_bytes = await page.screenshot(full_page=True)
-
-                # 保存截图到文件
-                screenshot_path.write_bytes(screenshot_bytes)
+                # text_only 不生成随后会被丢弃的全页截图。
+                screenshot_bytes = await page.screenshot(full_page=True) if capture_screenshot else None
+                if screenshot_bytes is not None:
+                    screenshot_path.write_bytes(screenshot_bytes)
                 
                 # 保存文本到文件（用于缓存）
                 try:
@@ -4366,11 +4397,12 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                     pass
 
                 # 保存样式信息到文件（用于缓存）
-                try:
-                    with open(styles_path, 'w', encoding='utf-8') as sf:
-                        json.dump(page_design_info, sf, ensure_ascii=False)
-                except Exception:
-                    pass
+                if include_design_info:
+                    try:
+                        with open(styles_path, 'w', encoding='utf-8') as sf:
+                            json.dump(page_design_info, sf, ensure_ascii=False)
+                    except Exception:
+                        pass
 
                 # 保存 Axure 标注信息到文件（用于缓存）
                 try:
@@ -4382,16 +4414,17 @@ async def screenshot_page_internal(resource_dir: str, page_names: List[str], out
                 result = {
                     'page_name': page_name,
                     'success': True,
-                    'screenshot_path': str(screenshot_path),
                     'page_text': page_text,
                     'page_design_info': page_design_info,
                     'page_annotations': axure_annotations,
-                    'size': f"{len(screenshot_bytes) / 1024:.1f}KB",
                     'from_cache': False
                 }
+                if screenshot_bytes is not None:
+                    result['screenshot_path'] = str(screenshot_path)
+                    result['size'] = f"{len(screenshot_bytes) / 1024:.1f}KB"
 
                 # 如果需要返回base64
-                if return_base64:
+                if return_base64 and screenshot_bytes is not None:
                     result['base64'] = base64.b64encode(screenshot_bytes).decode('utf-8')
                     result['mime_type'] = 'image/png'
 
@@ -5299,9 +5332,12 @@ async def lanhu_get_ai_analyze_page_result(
         if download_result['status'] in ['downloaded', 'updated']:
             fix_html_files(resource_dir)
 
-        # 获取页面列表
-        pages_info = await extractor.get_pages_list(url)
-        all_pages = pages_info['pages']
+        # download_resources 已经拿到 sitemap；不要再次请求文档与 mapping。
+        all_pages = download_result.get('pages')
+        if not isinstance(all_pages, list):
+            # 兼容升级前生成、尚未包含 page_list 的旧缓存。
+            pages_info = await extractor.get_pages_list(url)
+            all_pages = pages_info['pages']
 
         # 处理page_names参数 - 构建name到filename的映射
         page_map = {p['name']: p['filename'].replace('.html', '') for p in all_pages}
@@ -5331,10 +5367,18 @@ async def lanhu_get_ai_analyze_page_result(
                     target_pages.append(pn)
                     target_page_names.append(pn)
 
-        # 截图（不需要返回base64了，直接保存文件）
-        # 传入version_id用于智能缓存
+        # text_only 仍渲染动态 Axure 文本，但跳过样式扫描和全页截图。
+        is_text_only = (mode == "text_only")
         version_id = download_result.get('version_id', '')
-        results = await screenshot_page_internal(resource_dir, target_pages, output_dir, return_base64=False, version_id=version_id)
+        results = await screenshot_page_internal(
+            resource_dir,
+            target_pages,
+            output_dir,
+            return_base64=False,
+            version_id=version_id,
+            capture_screenshot=not is_text_only,
+            include_design_info=not is_text_only,
+        )
 
         # 构建响应
         cached_count = sum(1 for r in results if r.get('from_cache'))
@@ -5358,7 +5402,6 @@ async def lanhu_get_ai_analyze_page_result(
         filename_to_display = {p['filename'].replace('.html', ''): p['name'] for p in all_pages}
 
         # 根据mode决定输出格式
-        is_text_only = (mode == "text_only")
         mode_indicator = "📝 TEXT_ONLY MODE" if is_text_only else "📸 FULL MODE"
         
         header_text = f"{cache_hint} {mode_indicator} | Version: {download_result['version_id'][:8]}...\n"
@@ -6836,11 +6879,28 @@ async def lanhu_get_members(
     }
 
 
-# Versioned visual evidence. These tools expose source facts, not inferred business semantics.
-from lanhu_design.service import DesignError, DesignService
-from lanhu_design import __version__
+# Versioned visual evidence. Requirement-document extraction remains usable when an
+# operator upgrades the historical single-file deployment by replacing only this script.
+# Full design tools still require the packaged ``lanhu_design`` modules.
+try:
+    from lanhu_design.service import DesignError, DesignService
+    from lanhu_design import __version__
+except ModuleNotFoundError as exc:
+    if exc.name != "lanhu_design" and not str(exc.name).startswith("lanhu_design."):
+        raise
 
-_design_service = DesignService(DATA_DIR / "design_context", COOKIE, DDS_COOKIE, HTTP_TIMEOUT)
+    __version__ = "1.8.4"
+    DesignService = None
+
+    class DesignError(Exception):
+        def __init__(self, code: str, message: str):
+            super().__init__(message)
+            self.code = code
+
+_design_service = (
+    DesignService(DATA_DIR / "design_context", COOKIE, DDS_COOKIE, HTTP_TIMEOUT)
+    if DesignService is not None else None
+)
 
 
 def _design_failure(exc: Exception) -> dict:
@@ -6873,6 +6933,8 @@ async def lanhu_get_design_overview(
     classification is performed. All later calls use the returned snapshot_id.
     """
     try:
+        if _design_service is None:
+            raise DesignError("DesignModulesMissing", "Install the full package to use design tools; requirement tools remain available.")
         prepared = await _design_service.prepare(url, design_id, version_id)
         result = _design_service.query(prepared["snapshot_id"], offset=offset, limit=limit,
                                        annotate=annotate, include_styles=False)
@@ -6897,6 +6959,8 @@ async def lanhu_inspect_design_region(
     Choose assets by visual evidence and IDs; names need not be meaningful.
     """
     try:
+        if _design_service is None:
+            raise DesignError("DesignModulesMissing", "Install the full package to use design tools; requirement tools remain available.")
         if not region and not node_ids:
             raise DesignError("RegionRequired", "Specify a source-canvas region or node_ids.")
         result = await _design_service.inspect(snapshot_id, region=region, node_ids=node_ids, offset=offset,
@@ -6921,6 +6985,8 @@ async def lanhu_export_design_assets(
     into its project. A server cache path is not a client path. Partial exports list failures.
     """
     try:
+        if _design_service is None:
+            raise DesignError("DesignModulesMissing", "Install the full package to use design tools; requirement tools remain available.")
         return await _design_service.export(snapshot_id, asset_ids, kind, target_dpr, format_preference)
     except Exception as exc:
         return _design_failure(exc)
@@ -6929,12 +6995,16 @@ async def lanhu_export_design_assets(
 @mcp.resource("lanhu://design/{snapshot_id}/preview/{preview_id}", mime_type="image/png")
 def lanhu_design_preview(snapshot_id: str, preview_id: str) -> bytes:
     """The exact crop generated by a visual design query."""
+    if _design_service is None:
+        raise DesignError("DesignModulesMissing", "Install the full package to use design resources.")
     return _design_service.artifact(snapshot_id, "preview", preview_id)
 
 
 @mcp.resource("lanhu://design/{snapshot_id}/bundle/{bundle_id}", mime_type="application/zip")
 def lanhu_design_bundle(snapshot_id: str, bundle_id: str) -> bytes:
     """Verified original assets and their portable manifest; install on the client."""
+    if _design_service is None:
+        raise DesignError("DesignModulesMissing", "Install the full package to use design resources.")
     return _design_service.artifact(snapshot_id, "bundle", bundle_id)
 
 

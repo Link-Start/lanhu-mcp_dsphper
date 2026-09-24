@@ -602,7 +602,8 @@ ROLE_MAPPING_RULES = [
 
 ### Cache Control
 
-Cache directory is controlled by environment variable `DATA_DIR`:
+The cache directory is controlled by `DATA_DIR`. A relative path is anchored to the `.env` directory, or to the source directory when no `.env` exists, so changing the MCP client's working directory does not create a second cache. For requirement URLs containing `versionId`, an intact matching cache returns without first contacting Lanhu. `text_only` extracts text and annotations without screenshots or design-style scans.
+
 
 ```bash
 export DATA_DIR="/path/to/cache"

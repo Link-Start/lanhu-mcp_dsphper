@@ -836,7 +836,8 @@ ROLE_MAPPING_RULES = [
 
 ### 缓存控制
 
-缓存目录由环境变量 `DATA_DIR` 控制：
+缓存目录由环境变量 `DATA_DIR` 控制。相对路径固定相对于 `.env` 所在目录；未使用 `.env` 时固定相对于源码目录，不会随 Cursor、Claude Code 等客户端的启动目录变化。带 `versionId` 的需求文档在版本和文件完整性匹配时可直接离线命中缓存，不再先等待蓝湖接口。`text_only` 模式只提取文字和标注，不生成截图或扫描设计样式。
+
 
 ```bash
 export DATA_DIR="/path/to/cache"
